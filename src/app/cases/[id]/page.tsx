@@ -23,6 +23,7 @@ import { EditDocumentDialog } from '@/components/forms/EditDocumentDialog';
 import { EditTaskDialog } from '@/components/forms/EditTaskDialog';
 import { EditEventDialog } from '@/components/forms/EditEventDialog';
 import { EditLandParcelDialog } from '@/components/forms/EditLandParcelDialog';
+import { LinkedRecommendations } from '@/components/compliance/LinkedRecommendations';
 import {
   ArrowLeft,
   Edit,
@@ -36,6 +37,7 @@ import {
   Plus,
   Edit2,
   MousePointerClick,
+  Link as LinkIcon,
 } from 'lucide-react';
 
 /* ---------- Types (so nothing is `unknown`) ---------- */
@@ -311,13 +313,14 @@ export default function CaseDetailPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-7 lg:w-auto">
+          <TabsList className="grid w-full grid-cols-8 lg:w-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="parties">Parties ({parties.length})</TabsTrigger>
             <TabsTrigger value="documents">Documents ({documents.length})</TabsTrigger>
             <TabsTrigger value="tasks">Tasks ({tasks.length})</TabsTrigger>
             <TabsTrigger value="events">Events ({events.length})</TabsTrigger>
             <TabsTrigger value="land">Land ({landParcels.length})</TabsTrigger>
+            <TabsTrigger value="compliance">Compliance</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
           </TabsList>
 
@@ -832,6 +835,11 @@ export default function CaseDetailPage() {
           </TabsContent>
 
           {/* History Tab */}
+          {/* Compliance Tab */}
+          <TabsContent value="compliance">
+            <LinkedRecommendations caseId={caseId} />
+          </TabsContent>
+
           <TabsContent value="history">
             <Card>
               <CardHeader>

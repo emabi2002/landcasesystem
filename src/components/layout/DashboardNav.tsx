@@ -24,7 +24,8 @@ import {
   LogOut,
   FolderOpen,
   CheckSquare,
-  Shield
+  Shield,
+  Link as LinkIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -37,6 +38,7 @@ const navigation = [
   { name: 'Documents', href: '/documents', icon: FileText },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Land Parcels', href: '/land-parcels', icon: MapPin },
+  { name: 'Compliance', href: '/compliance', icon: LinkIcon },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Admin', href: '/admin/users', icon: Shield },
 ];
