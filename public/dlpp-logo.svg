@@ -1,0 +1,11 @@
+<svg width="120" height="140" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer Triangle -->
+  <path d="M60 10 L110 120 L10 120 Z" stroke="#D946EF" stroke-width="4" fill="none"/>
+
+  <!-- Inner Shield/Arrow Design -->
+  <!-- Top part of shield -->
+  <path d="M60 30 L45 60 L45 80 L60 70 L75 80 L75 60 Z" stroke="#D946EF" stroke-width="3" fill="none"/>
+
+  <!-- Arrow pointing down -->
+  <path d="M60 70 L60 110 M50 100 L60 110 L70 100" stroke="#D946EF" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
