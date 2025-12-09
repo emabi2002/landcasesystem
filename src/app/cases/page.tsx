@@ -220,10 +220,10 @@ export default function CasesPage() {
             <h1 className="text-3xl font-bold text-slate-900">Cases</h1>
             <p className="text-slate-600 mt-1">Manage all legal cases</p>
           </div>
-          <Link href="/cases/new">
+          <Link href="/cases/create-minimal">
             <Button className="gap-2 text-white hover:opacity-90" style={{ background: '#EF5A5A' }}>
               <Plus className="h-4 w-4" />
-              Register New Case
+              Create New Case
             </Button>
           </Link>
         </div>
