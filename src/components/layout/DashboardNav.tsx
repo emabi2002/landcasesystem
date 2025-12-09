@@ -40,13 +40,6 @@ import { GlobalSearch } from './GlobalSearch';
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Cases', href: '/cases', icon: FolderOpen },
-  { name: 'Correspondence', href: '/correspondence', icon: Mail },
-  { name: 'Directions', href: '/directions', icon: ClipboardList },
-  { name: 'Files', href: '/file-requests', icon: Folder },
-  { name: 'Filings', href: '/filings', icon: Send },
-  { name: 'Lawyers', href: '/lawyers', icon: Scale },
-  { name: 'Compliance', href: '/compliance', icon: LinkIcon },
-  { name: 'Communications', href: '/communications', icon: MessageSquare },
   { name: 'Admin', href: '/admin', icon: Shield, adminOnly: true },
 ];
 
