@@ -47,6 +47,7 @@ const navigation = [
   { name: 'Lawyers', href: '/lawyers', icon: Scale },
   { name: 'Compliance', href: '/compliance', icon: LinkIcon },
   { name: 'Communications', href: '/communications', icon: MessageSquare },
+  { name: 'Admin', href: '/admin', icon: Shield, adminOnly: true },
 ];
 
 export function DashboardNav() {
