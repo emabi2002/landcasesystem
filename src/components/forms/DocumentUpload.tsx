@@ -89,7 +89,7 @@ export function DocumentUpload({ caseId, filingId, onUploadComplete, accept, max
       // Only save document record if we have a caseId
       if (caseId) {
         await (supabase as any)
-          .from('documents')
+          .from('legal_documents')
           .insert({
             case_id: caseId,
             title: selectedFile.name,

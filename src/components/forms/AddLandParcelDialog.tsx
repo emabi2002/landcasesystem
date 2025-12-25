@@ -57,7 +57,7 @@ export function AddLandParcelDialog({ caseId, onSuccess, open: controlledOpen, o
       }
 
       const { error } = await supabase
-        .from('land_parcels')
+        .from('legal_land_parcels')
         .insert([
           {
             case_id: caseId,

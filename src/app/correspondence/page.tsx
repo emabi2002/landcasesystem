@@ -78,7 +78,7 @@ export default function CorrespondencePage() {
   const loadCaseData = async () => {
     try {
       const { data, error } = await (supabase as any)
-        .from('cases')
+        .from('legal_cases')
         .select('case_number, title')
         .eq('id', selectedCaseId)
         .single();
@@ -98,7 +98,7 @@ export default function CorrespondencePage() {
     setLoading(true);
     try {
       const { data, error} = await (supabase as any)
-        .from('documents')
+        .from('legal_documents')
         .select('*')
         .eq('case_id', selectedCaseId)
         .order('uploaded_at', { ascending: false });

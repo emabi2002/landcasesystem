@@ -76,7 +76,7 @@ export function LinkRecommendationDialog({
     setLoadingCases(true);
     try {
       const { data, error } = await supabase
-        .from('cases')
+        .from('legal_cases')
         .select('id, case_number, title, status, region')
         .in('status', ['Open', 'In Progress', 'Pending'])
         .order('created_at', { ascending: false })

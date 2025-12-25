@@ -135,7 +135,7 @@ export default function RBACAdminPage() {
     setCurrentUserId(user.id);
 
     const { data: userData } = await (supabase as any)
-      .from('profiles')
+      .from('legal_profiles')
       .select('role')
       .eq('id', user.id)
       .single();
@@ -322,7 +322,7 @@ export default function RBACAdminPage() {
   const loadAllUsers = async () => {
     try {
       const { data, error } = await (supabase as any)
-        .from('profiles')
+        .from('legal_profiles')
         .select('id, email, full_name, role')
         .order('full_name');
 

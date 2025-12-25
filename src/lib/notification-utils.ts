@@ -30,7 +30,7 @@ export async function notifyNewCase(caseData: CaseNotification): Promise<{ succe
     const targetRoles = CASE_CREATION_RECIPIENTS.map(r => r.role);
 
     const { data: recipients, error: recipientsError } = await (supabase as any)
-      .from('profiles')
+      .from('legal_profiles')
       .select('id, email, full_name, role')
       .in('role', targetRoles)
       .eq('is_active', true);
@@ -49,7 +49,7 @@ export async function notifyNewCase(caseData: CaseNotification): Promise<{ succe
     let creatorName = caseData.created_by_name;
     if (!creatorName) {
       const { data: creator } = await (supabase as any)
-        .from('profiles')
+        .from('legal_profiles')
         .select('full_name')
         .eq('id', caseData.created_by)
         .single();
@@ -81,7 +81,7 @@ export async function notifyNewCase(caseData: CaseNotification): Promise<{ succe
     }));
 
     const { error: notificationError } = await (supabase as any)
-      .from('notifications')
+      .from('legal_notifications')
       .insert(notifications);
 
     if (notificationError) {
@@ -105,7 +105,7 @@ export async function notifyNewCase(caseData: CaseNotification): Promise<{ succe
 async function logNotificationActivity(caseData: CaseNotification, recipientCount: number) {
   try {
     await (supabase as any)
-      .from('case_history')
+      .from('legal_case_history')
       .insert({
         case_id: caseData.case_id,
         action: 'notifications_sent',
@@ -135,7 +135,7 @@ export async function addCaseComment(params: {
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const { error } = await (supabase as any)
-      .from('case_comments')
+      .from('legal_case_comments')
       .insert({
         case_id: params.case_id,
         user_id: params.user_id,
@@ -167,7 +167,7 @@ async function notifyCommentAdded(case_id: string, commenter_id: string) {
   try {
     // Get case details and creator
     const { data: caseData } = await (supabase as any)
-      .from('cases')
+      .from('legal_cases')
       .select('case_number, title, created_by')
       .eq('id', case_id)
       .single();
@@ -178,14 +178,14 @@ async function notifyCommentAdded(case_id: string, commenter_id: string) {
 
     // Get commenter name
     const { data: commenter } = await (supabase as any)
-      .from('profiles')
+      .from('legal_profiles')
       .select('full_name, role')
       .eq('id', commenter_id)
       .single();
 
     // Create notification for case creator
     await (supabase as any)
-      .from('notifications')
+      .from('legal_notifications')
       .insert({
         user_id: caseData.created_by,
         case_id: case_id,
@@ -213,7 +213,7 @@ async function notifyCommentAdded(case_id: string, commenter_id: string) {
 export async function getUserNotifications(userId: string, unreadOnly: boolean = false) {
   try {
     let query = (supabase as any)
-      .from('notifications')
+      .from('legal_notifications')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -242,7 +242,7 @@ export async function getUserNotifications(userId: string, unreadOnly: boolean =
 export async function markNotificationAsRead(notificationId: string) {
   try {
     const { error } = await (supabase as any)
-      .from('notifications')
+      .from('legal_notifications')
       .update({ read: true, read_at: new Date().toISOString() })
       .eq('id', notificationId);
 
@@ -264,7 +264,7 @@ export async function markNotificationAsRead(notificationId: string) {
 export async function getCaseComments(caseId: string) {
   try {
     const { data, error } = await (supabase as any)
-      .from('case_comments')
+      .from('legal_case_comments')
       .select(`
         *,
         user:profiles(full_name, role, email)

@@ -47,7 +47,7 @@ export function AddPartyDialog({ caseId, onSuccess, open: controlledOpen, onOpen
       const contactInfo = formData.contact_info ? JSON.parse(JSON.stringify({ notes: formData.contact_info })) : null;
 
       const { error } = await supabase
-        .from('parties')
+        .from('legal_parties')
         .insert([
           {
             case_id: caseId,

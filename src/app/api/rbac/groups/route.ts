@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const includeInactive = searchParams.get('include_inactive') === 'true';
 
     let query = supabase
-      .from('user_groups')
+      .from('legal_user_groups')
       .select('*, created_by_profile:created_by(full_name)')
       .order('group_name');
 
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from('user_groups')
+      .from('legal_user_groups')
       .insert({
         group_name,
         group_code: group_code.toUpperCase(),
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     // Audit log
-    await supabase.from('rbac_audit_log').insert({
+    await supabase.from('legal_rbac_audit_log').insert({
       action: 'group_created',
       entity_type: 'group',
       entity_id: data.id,
@@ -88,7 +88,7 @@ export async function PUT(request: NextRequest) {
     if (!id) throw new Error('Group ID is required');
 
     const { data, error } = await supabase
-      .from('user_groups')
+      .from('legal_user_groups')
       .update({
         group_name,
         description,
@@ -102,7 +102,7 @@ export async function PUT(request: NextRequest) {
     if (error) throw error;
 
     // Audit log
-    await supabase.from('rbac_audit_log').insert({
+    await supabase.from('legal_rbac_audit_log').insert({
       action: 'group_updated',
       entity_type: 'group',
       entity_id: id,
@@ -130,14 +130,14 @@ export async function DELETE(request: NextRequest) {
     if (!id) throw new Error('Group ID is required');
 
     const { error } = await supabase
-      .from('user_groups')
+      .from('legal_user_groups')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
 
     // Audit log
-    await supabase.from('rbac_audit_log').insert({
+    await supabase.from('legal_rbac_audit_log').insert({
       action: 'group_deleted',
       entity_type: 'group',
       entity_id: id,

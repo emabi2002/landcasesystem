@@ -60,7 +60,7 @@ export function EditTaskDialog({ task, onSuccess, open, onOpenChange }: EditTask
 
     try {
       const { error } = await supabase
-        .from('tasks')
+        .from('legal_tasks')
         .update({
           title: formData.title,
           description: formData.description || null,
@@ -92,7 +92,7 @@ export function EditTaskDialog({ task, onSuccess, open, onOpenChange }: EditTask
     setLoading(true);
     try {
       const { error } = await supabase
-        .from('tasks')
+        .from('legal_tasks')
         .delete()
         .eq('id', task.id);
 

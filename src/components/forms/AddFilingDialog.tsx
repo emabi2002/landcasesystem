@@ -41,7 +41,7 @@ export function AddFilingDialog({ open, onOpenChange, onSuccess }: AddFilingDial
   const loadCases = async () => {
     try {
       const { data, error } = await supabase
-        .from('cases')
+        .from('legal_cases')
         .select('id, case_number, title')
         .order('created_at', { ascending: false });
 

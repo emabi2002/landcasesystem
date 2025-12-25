@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const user_id = searchParams.get('user_id');
 
     let query = supabase
-      .from('user_group_membership')
+      .from('legal_user_group_membership')
       .select(`
         *,
         user_groups(group_name, group_code),
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from('user_group_membership')
+      .from('legal_user_group_membership')
       .insert({
         user_id,
         group_id,
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     // Audit log
-    await supabase.from('rbac_audit_log').insert({
+    await supabase.from('legal_rbac_audit_log').insert({
       action: 'user_assigned_to_group',
       entity_type: 'membership',
       entity_id: data.id,
@@ -98,7 +98,7 @@ export async function PUT(request: NextRequest) {
     if (!id) throw new Error('Membership ID is required');
 
     const { data, error } = await supabase
-      .from('user_group_membership')
+      .from('legal_user_group_membership')
       .update({ is_active })
       .eq('id', id)
       .select()
@@ -107,7 +107,7 @@ export async function PUT(request: NextRequest) {
     if (error) throw error;
 
     // Audit log
-    await supabase.from('rbac_audit_log').insert({
+    await supabase.from('legal_rbac_audit_log').insert({
       action: is_active ? 'membership_activated' : 'membership_deactivated',
       entity_type: 'membership',
       entity_id: id,
@@ -135,14 +135,14 @@ export async function DELETE(request: NextRequest) {
     if (!id) throw new Error('Membership ID is required');
 
     const { error } = await supabase
-      .from('user_group_membership')
+      .from('legal_user_group_membership')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
 
     // Audit log
-    await supabase.from('rbac_audit_log').insert({
+    await supabase.from('legal_rbac_audit_log').insert({
       action: 'user_removed_from_group',
       entity_type: 'membership',
       entity_id: id,

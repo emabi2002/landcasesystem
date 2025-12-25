@@ -49,7 +49,7 @@ export function AddTaskDialog({ caseId, onSuccess, open: controlledOpen, onOpenC
       if (!user) throw new Error('Not authenticated');
 
       const { error } = await supabase
-        .from('tasks')
+        .from('legal_tasks')
         .insert([
           {
             case_id: caseId,

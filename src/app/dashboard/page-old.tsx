@@ -125,7 +125,7 @@ export default function DashboardPage() {
     try {
       // Get all cases to compute open/closed quickly (or you can do separate count queries)
       const { data: allCases, error: casesError } = await supabase
-        .from('cases')
+        .from('legal_cases')
         .select('*');
 
       if (casesError) throw casesError;
@@ -136,7 +136,7 @@ export default function DashboardPage() {
 
       // Upcoming events (limit 5)
       const { data: ev } = await supabase
-        .from('events')
+        .from('legal_events')
         .select('*')
         .gte('event_date', new Date().toISOString())
         .order('event_date', { ascending: true })
@@ -144,14 +144,14 @@ export default function DashboardPage() {
 
       // Overdue tasks (pending + due_date < now)
       const { data: overdue } = await supabase
-        .from('tasks')
+        .from('legal_tasks')
         .select('*')
         .lt('due_date', new Date().toISOString())
         .eq('status', 'pending');
 
       // Recent cases (limit 5 newest)
       const { data: rc } = await supabase
-        .from('cases')
+        .from('legal_cases')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(5);

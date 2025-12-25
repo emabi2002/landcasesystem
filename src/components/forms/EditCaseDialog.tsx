@@ -66,7 +66,7 @@ export function EditCaseDialog({ caseData, onSuccess }: EditCaseDialogProps) {
       if (!user) throw new Error('Not authenticated');
 
       const { error } = await supabase
-        .from('cases')
+        .from('legal_cases')
         .update({
           title: formData.title,
           description: formData.description || null,
@@ -80,7 +80,7 @@ export function EditCaseDialog({ caseData, onSuccess }: EditCaseDialogProps) {
       if (error) throw error;
 
       // Add to case history
-      await supabase.from('case_history').insert([
+      await supabase.from('legal_case_history').insert([
         {
           case_id: caseData.id,
           action: 'Case Updated',

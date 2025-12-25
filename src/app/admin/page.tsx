@@ -56,7 +56,7 @@ export default function AdminDashboardPage() {
 
     // Check if user is admin
     const { data: userData } = await (supabase as any)
-      .from('profiles')
+      .from('legal_profiles')
       .select('*')
       .eq('id', user.id)
       .single();
@@ -74,17 +74,17 @@ export default function AdminDashboardPage() {
     try {
       // Get user counts
       const { count: totalUsers } = await (supabase as any)
-        .from('profiles')
+        .from('legal_profiles')
         .select('*', { count: 'exact', head: true });
 
       const { count: activeUsers } = await (supabase as any)
-        .from('profiles')
+        .from('legal_profiles')
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true);
 
       // Get case counts
       const { count: totalCases } = await (supabase as any)
-        .from('cases')
+        .from('legal_cases')
         .select('*', { count: 'exact', head: true });
 
       setStats({

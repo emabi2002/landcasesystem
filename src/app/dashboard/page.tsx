@@ -132,14 +132,14 @@ export default function EnhancedDashboard() {
 
       // Load upcoming events (next 30 days)
       const { data: events, error: eventsError } = await supabase
-        .from('events')
+        .from('legal_events')
         .select('*')
         .gte('event_date', new Date().toISOString())
         .lte('event_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
 
       // Load overdue tasks
       const { data: tasks, error: tasksError } = await supabase
-        .from('tasks')
+        .from('legal_tasks')
         .select('*')
         .eq('status', 'pending')
         .lt('due_date', new Date().toISOString());

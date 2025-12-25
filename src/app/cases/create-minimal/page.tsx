@@ -80,7 +80,7 @@ export default function CreateMinimalCasePage() {
 
       // Insert minimal case record
       const { data: newCase, error: caseError } = await (supabase as any)
-        .from('cases')
+        .from('legal_cases')
         .insert([caseData])
         .select()
         .single();
@@ -99,7 +99,7 @@ export default function CreateMinimalCasePage() {
         }));
 
         const { error: partyError } = await (supabase as any)
-          .from('parties')
+          .from('legal_parties')
           .insert(partyRecords);
 
         if (partyError) {
@@ -121,7 +121,7 @@ export default function CreateMinimalCasePage() {
         }));
 
         const { error: docError } = await (supabase as any)
-          .from('documents')
+          .from('legal_documents')
           .insert(documentRecords);
 
         if (docError) {

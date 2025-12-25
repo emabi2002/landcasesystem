@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     // Get manager details
     const { data: manager, error: managerError } = await supabase
-      .from('profiles')
+      .from('legal_profiles')
       .select('id, full_name, email, role')
       .eq('id', assigned_by)
       .single();
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     // Get litigation officer details
     const { data: officer, error: officerError } = await supabase
-      .from('profiles')
+      .from('legal_profiles')
       .select('id, full_name, email, role')
       .eq('id', assigned_to)
       .single();
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     // Get case details
     const { data: caseData, error: caseError } = await supabase
-      .from('cases')
+      .from('legal_cases')
       .select('*')
       .eq('id', case_id)
       .single();
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     console.log('📚 Gathering executive commentary and advice...');
 
     const { data: workflowData, error: workflowError } = await supabase
-      .from('executive_workflow')
+      .from('legal_executive_workflow')
       .select('*')
       .eq('case_id', case_id)
       .order('created_at', { ascending: true });
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     // STEP 3: Create case assignment record
     const { data: assignment, error: assignmentError } = await supabase
-      .from('case_assignments')
+      .from('legal_case_assignments')
       .insert({
         case_id,
         assigned_to,
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
 
     // STEP 4: Update case assigned_officer_id
     const { error: updateError } = await supabase
-      .from('cases')
+      .from('legal_cases')
       .update({
         assigned_officer_id: assigned_to,
         updated_at: new Date().toISOString()
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     // STEP 5: Update executive workflow to completed
     const { error: workflowUpdateError } = await supabase
-      .from('executive_workflow')
+      .from('legal_executive_workflow')
       .update({
         stage: 'officer_assigned',
         status: 'completed',
@@ -183,7 +183,7 @@ Please review all executive commentary before proceeding with this case.
     `.trim();
 
     const { error: notifyError } = await supabase
-      .from('notifications')
+      .from('legal_notifications')
       .insert({
         user_id: assigned_to,
         case_id,
@@ -213,7 +213,7 @@ Please review all executive commentary before proceeding with this case.
 
     // STEP 7: Add case history entry
     const { error: historyError } = await supabase
-      .from('case_history')
+      .from('legal_case_history')
       .insert({
         case_id,
         action: 'Case Assigned',
@@ -235,7 +235,7 @@ Please review all executive commentary before proceeding with this case.
 
     // STEP 8: Create a task for the litigation officer
     const { error: taskError } = await supabase
-      .from('tasks')
+      .from('legal_tasks')
       .insert({
         case_id,
         title: `Handle Case: ${caseData.case_number}`,
@@ -289,7 +289,7 @@ export async function GET(request: NextRequest) {
     }
 
     let query = supabase
-      .from('case_assignments')
+      .from('legal_case_assignments')
       .select(`
         *,
         cases:case_id (

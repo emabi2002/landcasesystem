@@ -55,7 +55,7 @@ export function CaseSelector({
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('cases')
+        .from('legal_cases')
         .select('id, case_number, title, status')
         .order('created_at', { ascending: false })
         .limit(100);

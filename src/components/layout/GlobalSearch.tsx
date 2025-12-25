@@ -57,7 +57,7 @@ export function GlobalSearch() {
     try {
       // Search cases
       const { data: cases } = await supabase
-        .from('cases')
+        .from('legal_cases')
         .select('id, case_number, title, status')
         .or(`case_number.ilike.${searchTerm},title.ilike.${searchTerm}`)
         .limit(5);
@@ -76,7 +76,7 @@ export function GlobalSearch() {
 
       // Search documents
       const { data: documents } = await supabase
-        .from('documents')
+        .from('legal_documents')
         .select('id, title, description, case_id')
         .or(`title.ilike.${searchTerm},description.ilike.${searchTerm}`)
         .limit(5);
@@ -95,7 +95,7 @@ export function GlobalSearch() {
 
       // Search events
       const { data: events } = await supabase
-        .from('events')
+        .from('legal_events')
         .select('id, title, event_date, case_id')
         .or(`title.ilike.${searchTerm},location.ilike.${searchTerm}`)
         .limit(5);
@@ -114,7 +114,7 @@ export function GlobalSearch() {
 
       // Search tasks
       const { data: tasks } = await supabase
-        .from('tasks')
+        .from('legal_tasks')
         .select('id, title, description, case_id')
         .or(`title.ilike.${searchTerm},description.ilike.${searchTerm}`)
         .limit(5);
@@ -133,7 +133,7 @@ export function GlobalSearch() {
 
       // Search land parcels
       const { data: parcels } = await supabase
-        .from('land_parcels')
+        .from('legal_land_parcels')
         .select('id, parcel_number, location, case_id')
         .or(`parcel_number.ilike.${searchTerm},location.ilike.${searchTerm}`)
         .limit(5);
@@ -152,7 +152,7 @@ export function GlobalSearch() {
 
       // Search parties
       const { data: parties } = await supabase
-        .from('parties')
+        .from('legal_parties')
         .select('id, name, role, case_id')
         .ilike('name', searchTerm)
         .limit(5);

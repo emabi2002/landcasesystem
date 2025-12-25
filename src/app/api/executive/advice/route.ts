@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Get officer details
     const { data: officer, error: officerError } = await supabase
-      .from('profiles')
+      .from('legal_profiles')
       .select('id, full_name, email, role')
       .eq('id', user_id)
       .single();
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     // Get case details
     const { data: caseData, error: caseError } = await supabase
-      .from('cases')
+      .from('legal_cases')
       .select('id, case_number, title, court_file_number')
       .eq('id', case_id)
       .single();
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     // STEP 1: Update workflow tracking
     const { error: workflowError } = await supabase
-      .from('executive_workflow')
+      .from('legal_executive_workflow')
       .update({
         commentary,
         advice,
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     ].filter(Boolean).join('\n\n');
 
     const { data: comment, error: commentError } = await supabase
-      .from('case_comments')
+      .from('legal_case_comments')
       .insert({
         case_id,
         user_id,
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
 
     // STEP 3: Add case history entry
     const { error: historyError } = await supabase
-      .from('case_history')
+      .from('legal_case_history')
       .insert({
         case_id,
         action: `Executive Advice - ${officer.role}`,
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       if (nextRole) {
         // Get next officer
         const { data: nextOfficers, error: nextError } = await supabase
-          .from('profiles')
+          .from('legal_profiles')
           .select('id, full_name, email, role')
           .eq('role', nextRole);
 
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
           // Notify each officer in the next role
           for (const nextOfficer of nextOfficers) {
             const { error: notifyError } = await supabase
-              .from('notifications')
+              .from('legal_notifications')
               .insert({
                 user_id: nextOfficer.id,
                 case_id,
@@ -174,14 +174,14 @@ export async function POST(request: NextRequest) {
 
     // STEP 5: Notify case creator
     const { data: caseCreator, error: creatorError } = await supabase
-      .from('cases')
+      .from('legal_cases')
       .select('created_by')
       .eq('id', case_id)
       .single();
 
     if (!creatorError && caseCreator && caseCreator.created_by !== user_id) {
       await supabase
-        .from('notifications')
+        .from('legal_notifications')
         .insert({
           user_id: caseCreator.created_by,
           case_id,

@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     // STEP 1: Insert main case record
     const { data: newCase, error: caseError } = await supabase
-      .from('cases')
+      .from('legal_cases')
       .insert([{
         case_number: caseNumber,
         title: caseTitle,
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     // STEP 2: Insert DLPP as a party
     const { error: dlppPartyError } = await supabase
-      .from('parties')
+      .from('legal_parties')
       .insert({
         case_id: caseId,
         name: 'Department of Lands & Physical Planning',
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 
       if (opposingPartyName) {
         const { error: opposingPartyError } = await supabase
-          .from('parties')
+          .from('legal_parties')
           .insert({
             case_id: caseId,
             name: opposingPartyName,
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     // STEP 4: Insert land parcel if land data provided
     if (formData.land_description) {
       const { error: landError } = await supabase
-        .from('land_parcels')
+        .from('legal_land_parcels')
         .insert({
           case_id: caseId,
           parcel_number: formData.survey_plan_no || 'N/A',
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     // STEP 5: Insert event if returnable date provided
     if (formData.returnable_date) {
       const { error: eventError } = await supabase
-        .from('events')
+        .from('legal_events')
         .insert({
           case_id: caseId,
           event_type: 'hearing',
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
     // STEP 6: Insert task if officer assigned
     if (formData.dlpp_action_officer) {
       const { error: taskError } = await supabase
-        .from('tasks')
+        .from('legal_tasks')
         .insert({
           case_id: caseId,
           title: `Case Assignment: ${formData.case_number}`,
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
     // STEP 7: Insert document placeholder if court documents exist
     if (formData.court_file_number) {
       const { error: docError } = await supabase
-        .from('documents')
+        .from('legal_documents')
         .insert({
           case_id: caseId,
           title: `Court Documents - ${formData.court_file_number}`,
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
 
     // STEP 8: Insert case history entry
     const { error: historyError } = await supabase
-      .from('case_history')
+      .from('legal_case_history')
       .insert({
         case_id: caseId,
         action: 'Case Registered',
@@ -299,7 +299,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to extract opposing party name from parties description
+// Helper function to extract opposing party name from legal_parties description
 function extractOpposingParty(partiesDescription: string, dlppRole: string): string {
   // Format: "Plaintiff Name -v- Defendant Name"
   const parts = partiesDescription.split(' -v- ');

@@ -59,7 +59,7 @@ export function EditEventDialog({ event, onSuccess, open, onOpenChange }: EditEv
 
     try {
       const { error } = await supabase
-        .from('events')
+        .from('legal_events')
         .update({
           title: formData.title,
           description: formData.description || null,
@@ -91,7 +91,7 @@ export function EditEventDialog({ event, onSuccess, open, onOpenChange }: EditEv
     setLoading(true);
     try {
       const { error } = await supabase
-        .from('events')
+        .from('legal_events')
         .delete()
         .eq('id', event.id);
 

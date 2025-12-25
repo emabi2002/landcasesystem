@@ -94,7 +94,7 @@ export function AddDocumentDialog({ caseId, onSuccess, open: controlledOpen, onO
 
       // Save document metadata to database (works even if file upload failed)
       const { error: dbError } = await supabase
-        .from('documents')
+        .from('legal_documents')
         .insert([
           {
             case_id: caseId,

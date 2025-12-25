@@ -70,7 +70,7 @@ export default function ExecutiveReviewPage() {
       }
 
       const { data: profile, error } = await supabase
-        .from('profiles')
+        .from('legal_profiles')
         .select('*')
         .eq('id', user.id)
         .single();
@@ -120,7 +120,7 @@ export default function ExecutiveReviewPage() {
 
     try {
       const { data, error } = await supabase
-        .from('executive_workflow')
+        .from('legal_executive_workflow')
         .select(`
           id,
           case_id,

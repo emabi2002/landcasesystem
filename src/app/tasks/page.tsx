@@ -42,7 +42,7 @@ export default function TasksPage() {
   const loadTasks = async () => {
     try {
       const { data, error } = await supabase
-        .from('tasks')
+        .from('legal_tasks')
         .select('*, cases(title, case_number)')
         .order('due_date', { ascending: true });
 

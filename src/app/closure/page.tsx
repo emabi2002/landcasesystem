@@ -105,7 +105,7 @@ export default function ClosurePage() {
 
       // Update case with closure information
       const { error } = await (supabase as any)
-        .from('cases')
+        .from('legal_cases')
         .update({
           status: 'closed',
           closure_type: formData.closure_type,
@@ -118,7 +118,7 @@ export default function ClosurePage() {
 
       // Record closure in case history
       await (supabase as any)
-        .from('case_history')
+        .from('legal_case_history')
         .insert({
           case_id: formData.case_id,
           action: 'Case Closed',

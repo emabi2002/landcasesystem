@@ -43,7 +43,7 @@ export function AlertDialog({ caseId, currentStep, triggerButton }: AlertDialogP
 
       // Get case details for context
       const { data: caseData } = await (supabase as any)
-        .from('cases')
+        .from('legal_cases')
         .select('case_number, title')
         .eq('id', caseId)
         .single();

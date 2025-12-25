@@ -39,7 +39,7 @@ export function AddComplianceTrackingDialog({ open, onOpenChange, onSuccess }: A
   const loadCases = async () => {
     try {
       const { data, error } = await supabase
-        .from('cases')
+        .from('legal_cases')
         .select('id, case_number, title')
         .order('created_at', { ascending: false });
 

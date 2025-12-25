@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     if (!group_id) throw new Error('Group ID is required');
 
     const { data, error } = await supabase
-      .from('group_module_access')
+      .from('legal_group_module_access')
       .select(`
         *,
         user_groups(group_name),
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from('group_module_access')
+      .from('legal_group_module_access')
       .upsert({
         group_id,
         module_id,
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     // Audit log
-    await supabase.from('rbac_audit_log').insert({
+    await supabase.from('legal_rbac_audit_log').insert({
       action: 'access_granted',
       entity_type: 'access',
       entity_id: data.id,
@@ -102,14 +102,14 @@ export async function DELETE(request: NextRequest) {
     if (!id) throw new Error('Access ID is required');
 
     const { error } = await supabase
-      .from('group_module_access')
+      .from('legal_group_module_access')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
 
     // Audit log
-    await supabase.from('rbac_audit_log').insert({
+    await supabase.from('legal_rbac_audit_log').insert({
       action: 'access_revoked',
       entity_type: 'access',
       entity_id: id,

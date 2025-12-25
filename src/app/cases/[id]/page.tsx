@@ -179,7 +179,7 @@ export default function CaseDetailPage() {
     try {
       // Case
       const { data: caseDetail, error: caseError } = await supabase
-        .from('cases')
+        .from('legal_cases')
         .select('*')
         .eq('id', caseId)
         .single();
@@ -197,12 +197,12 @@ export default function CaseDetailPage() {
         { data: historyData },
         { data: alertsData },
       ] = await Promise.all([
-        supabase.from('parties').select('*').eq('case_id', caseId),
-        supabase.from('documents').select('*').eq('case_id', caseId).order('uploaded_at', { ascending: false }),
-        supabase.from('tasks').select('*').eq('case_id', caseId).order('due_date', { ascending: true }),
-        supabase.from('events').select('*').eq('case_id', caseId).order('event_date', { ascending: true }),
-        supabase.from('land_parcels').select('*').eq('case_id', caseId),
-        supabase.from('case_history').select('*').eq('case_id', caseId).order('created_at', { ascending: false }),
+        supabase.from('legal_parties').select('*').eq('case_id', caseId),
+        supabase.from('legal_documents').select('*').eq('case_id', caseId).order('uploaded_at', { ascending: false }),
+        supabase.from('legal_tasks').select('*').eq('case_id', caseId).order('due_date', { ascending: true }),
+        supabase.from('legal_events').select('*').eq('case_id', caseId).order('event_date', { ascending: true }),
+        supabase.from('legal_land_parcels').select('*').eq('case_id', caseId),
+        supabase.from('legal_case_history').select('*').eq('case_id', caseId).order('created_at', { ascending: false }),
         (supabase as any).from('communications').select('*').eq('case_id', caseId).eq('communication_type', 'alert').order('created_at', { ascending: false }),
       ]);
 
@@ -762,7 +762,7 @@ export default function CaseDetailPage() {
                                   }
                                   // Delete from database
                                   const { error } = await (supabase as any)
-                                    .from('documents')
+                                    .from('legal_documents')
                                     .delete()
                                     .eq('id', doc.id);
 

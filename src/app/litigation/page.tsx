@@ -60,7 +60,7 @@ export default function LitigationPage() {
 
       // Get cases assigned to current user
       const { data, error } = await supabase
-        .from('case_assignments')
+        .from('legal_case_assignments')
         .select(`
           *,
           cases!inner(*)

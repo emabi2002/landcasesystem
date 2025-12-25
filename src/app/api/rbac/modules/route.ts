@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const includeInactive = searchParams.get('include_inactive') === 'true';
 
     let query = supabase
-      .from('system_modules')
+      .from('legal_system_modules')
       .select('*')
       .order('display_order')
       .order('module_name');
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from('system_modules')
+      .from('legal_system_modules')
       .insert({
         module_name,
         module_code: module_code.toUpperCase(),
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     // Audit log
-    await supabase.from('rbac_audit_log').insert({
+    await supabase.from('legal_rbac_audit_log').insert({
       action: 'module_created',
       entity_type: 'module',
       entity_id: data.id,
@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest) {
     if (!id) throw new Error('Module ID is required');
 
     const { data, error } = await supabase
-      .from('system_modules')
+      .from('legal_system_modules')
       .update({
         module_name,
         description,
@@ -109,7 +109,7 @@ export async function PUT(request: NextRequest) {
     if (error) throw error;
 
     // Audit log
-    await supabase.from('rbac_audit_log').insert({
+    await supabase.from('legal_rbac_audit_log').insert({
       action: 'module_updated',
       entity_type: 'module',
       entity_id: id,
@@ -137,14 +137,14 @@ export async function DELETE(request: NextRequest) {
     if (!id) throw new Error('Module ID is required');
 
     const { error } = await supabase
-      .from('system_modules')
+      .from('legal_system_modules')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
 
     // Audit log
-    await supabase.from('rbac_audit_log').insert({
+    await supabase.from('legal_rbac_audit_log').insert({
       action: 'module_deleted',
       entity_type: 'module',
       entity_id: id,

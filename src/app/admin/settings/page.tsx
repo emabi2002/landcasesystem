@@ -30,7 +30,7 @@ export default function SystemSettingsPage() {
     }
 
     const { data: userData } = await (supabase as any)
-      .from('profiles')
+      .from('legal_profiles')
       .select('role')
       .eq('id', user.id)
       .single();

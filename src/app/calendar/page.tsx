@@ -40,7 +40,7 @@ export default function CalendarPage() {
   const loadEvents = async () => {
     try {
       const { data, error } = await supabase
-        .from('events')
+        .from('legal_events')
         .select('*, cases(title, case_number)')
         .order('event_date', { ascending: true });
 

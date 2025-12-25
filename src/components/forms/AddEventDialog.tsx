@@ -49,7 +49,7 @@ export function AddEventDialog({ caseId, onSuccess, open: controlledOpen, onOpen
       if (!user) throw new Error('Not authenticated');
 
       const { error } = await supabase
-        .from('events')
+        .from('legal_events')
         .insert([
           {
             case_id: caseId,

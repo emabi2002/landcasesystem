@@ -54,7 +54,7 @@ export function EditDocumentDialog({ document, onSuccess, open, onOpenChange }: 
 
     try {
       const { error } = await supabase
-        .from('documents')
+        .from('legal_documents')
         .update({
           title: formData.title,
           description: formData.description || null,
@@ -96,7 +96,7 @@ export function EditDocumentDialog({ document, onSuccess, open, onOpenChange }: 
 
       // Delete database record
       const { error } = await supabase
-        .from('documents')
+        .from('legal_documents')
         .delete()
         .eq('id', document.id);
 

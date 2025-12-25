@@ -64,7 +64,7 @@ export default function CaseTypesPage() {
     }
 
     const { data: userData } = await (supabase as any)
-      .from('profiles')
+      .from('legal_profiles')
       .select('role')
       .eq('id', user.id)
       .single();
@@ -82,7 +82,7 @@ export default function CaseTypesPage() {
       const typesWithUsage = await Promise.all(
         predefinedTypes.map(async (type) => {
           const { count } = await (supabase as any)
-            .from('cases')
+            .from('legal_cases')
             .select('*', { count: 'exact', head: true })
             .eq('case_type', type.code);
 

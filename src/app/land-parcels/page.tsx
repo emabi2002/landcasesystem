@@ -46,7 +46,7 @@ export default function LandParcelsPage() {
   const loadParcels = async () => {
     try {
       const { data, error } = await supabase
-        .from('land_parcels')
+        .from('legal_land_parcels')
         .select('*, cases(case_number, title)')
         .order('created_at', { ascending: false });
       if (error) throw error;

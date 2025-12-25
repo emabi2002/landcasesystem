@@ -94,7 +94,7 @@ export default function ReportsPage() {
     try {
       switch (selectedReport) {
         case 'case-summary': {
-          let query = supabase.from('cases').select('*');
+          let query = supabase.from('legal_cases').select('*');
           
           if (dateFrom) query = query.gte('created_at', dateFrom);
           if (dateTo) query = query.lte('created_at', dateTo);
@@ -115,7 +115,7 @@ export default function ReportsPage() {
         }
 
         case 'statistics': {
-          const { data: cases, error } = await supabase.from('cases').select('*');
+          const { data: cases, error } = await supabase.from('legal_cases').select('*');
           if (error) throw error;
 
           const stats = {
@@ -145,7 +145,7 @@ export default function ReportsPage() {
 
         case 'tasks': {
           const { data, error } = await supabase
-            .from('tasks')
+            .from('legal_tasks')
             .select('*, cases(case_number)')
             .order('due_date', { ascending: true });
           if (error) throw error;
@@ -167,7 +167,7 @@ export default function ReportsPage() {
 
         case 'documents': {
           const { data, error } = await supabase
-            .from('documents')
+            .from('legal_documents')
             .select('*, cases(case_number)')
             .order('uploaded_at', { ascending: false });
           if (error) throw error;
@@ -189,7 +189,7 @@ export default function ReportsPage() {
 
         case 'land-parcels': {
           const { data, error } = await supabase
-            .from('land_parcels')
+            .from('legal_land_parcels')
             .select('*, cases(case_number)')
             .order('parcel_number', { ascending: true });
           if (error) throw error;

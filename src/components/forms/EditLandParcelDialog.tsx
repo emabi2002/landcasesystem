@@ -72,7 +72,7 @@ export function EditLandParcelDialog({ parcel, onSuccess, open, onOpenChange }: 
         : null;
 
       const { error } = await supabase
-        .from('land_parcels')
+        .from('legal_land_parcels')
         .update({
           parcel_number: formData.parcel_number,
           location: formData.location || null,
@@ -104,7 +104,7 @@ export function EditLandParcelDialog({ parcel, onSuccess, open, onOpenChange }: 
     setLoading(true);
     try {
       const { error } = await supabase
-        .from('land_parcels')
+        .from('legal_land_parcels')
         .delete()
         .eq('id', parcel.id);
 

@@ -46,7 +46,7 @@ export default function DocumentsPage() {
   const loadDocuments = async () => {
     try {
       const { data, error } = await supabase
-        .from('documents')
+        .from('legal_documents')
         .select('*, cases(case_number, title)')
         .order('uploaded_at', { ascending: false });
       if (error) throw error;

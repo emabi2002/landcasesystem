@@ -58,7 +58,7 @@ export function EditPartyDialog({ party, onSuccess, open, onOpenChange }: EditPa
       const contactInfo = formData.contact_info ? JSON.parse(JSON.stringify({ notes: formData.contact_info })) : null;
 
       const { error } = await supabase
-        .from('parties')
+        .from('legal_parties')
         .update({
           name: formData.name,
           party_type: formData.party_type,
@@ -89,7 +89,7 @@ export function EditPartyDialog({ party, onSuccess, open, onOpenChange }: EditPa
     setLoading(true);
     try {
       const { error } = await supabase
-        .from('parties')
+        .from('legal_parties')
         .delete()
         .eq('id', party.id);
 

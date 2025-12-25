@@ -31,7 +31,7 @@ export async function GET() {
   try {
     // First, get the total count
     const { count, error: countError } = await supabase
-      .from('cases')
+      .from('legal_cases')
       .select('*', { count: 'exact', head: true });
 
     if (countError) throw countError;
@@ -45,7 +45,7 @@ export async function GET() {
 
     while (offset < (count || 0)) {
       const { data: batch, error } = await supabase
-        .from('cases')
+        .from('legal_cases')
         .select('*')
         .range(offset, offset + batchSize - 1)
         .order('created_at', { ascending: false });
