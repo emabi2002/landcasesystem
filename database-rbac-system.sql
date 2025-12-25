@@ -9,44 +9,44 @@ BEGIN;
 -- TABLE 1: USER GROUPS
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS public.user_groups (
+CREATE TABLE IF NOT EXISTS public.legal_user_groups (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   group_name TEXT UNIQUE NOT NULL,
   group_code TEXT UNIQUE NOT NULL,
   description TEXT,
   is_active BOOLEAN DEFAULT TRUE,
-  created_by UUID REFERENCES public.profiles(id),
+  created_by UUID REFERENCES public.legal_profiles(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
-COMMENT ON TABLE public.user_groups IS 'User groups for RBAC (e.g., Legal Officers, Survey Staff, Executives)';
+COMMENT ON TABLE public.legal_user_groups IS 'User groups for RBAC (e.g., Legal Officers, Survey Staff, Executives)';
 
 -- =====================================================
 -- TABLE 2: SYSTEM MODULES
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS public.system_modules (
+CREATE TABLE IF NOT EXISTS public.legal_system_modules (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   module_name TEXT UNIQUE NOT NULL,
   module_code TEXT UNIQUE NOT NULL,
   description TEXT,
   module_url TEXT,
   icon TEXT,
-  parent_module_id UUID REFERENCES public.system_modules(id),
+  parent_module_id UUID REFERENCES public.legal_system_modules(id),
   display_order INTEGER DEFAULT 0,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
-COMMENT ON TABLE public.system_modules IS 'System modules/features (Legal, Survey, Planning, Admin, etc.)';
+COMMENT ON TABLE public.legal_system_modules IS 'System modules/features (Legal, Survey, Planning, Admin, etc.)';
 
 -- =====================================================
 -- TABLE 3: PERMISSIONS
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS public.permissions (
+CREATE TABLE IF NOT EXISTS public.legal_permissions (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   permission_name TEXT UNIQUE NOT NULL,
   permission_code TEXT UNIQUE NOT NULL,
@@ -56,54 +56,54 @@ CREATE TABLE IF NOT EXISTS public.permissions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
-COMMENT ON TABLE public.permissions IS 'System permissions (view, create, edit, delete, admin)';
+COMMENT ON TABLE public.legal_permissions IS 'System legal_permissions (view, create, edit, delete, admin)';
 
 -- =====================================================
 -- TABLE 4: GROUP MODULE ACCESS
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS public.group_module_access (
+CREATE TABLE IF NOT EXISTS public.legal_group_module_access (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  group_id UUID REFERENCES public.user_groups(id) ON DELETE CASCADE NOT NULL,
-  module_id UUID REFERENCES public.system_modules(id) ON DELETE CASCADE NOT NULL,
+  group_id UUID REFERENCES public.legal_user_groups(id) ON DELETE CASCADE NOT NULL,
+  module_id UUID REFERENCES public.legal_system_modules(id) ON DELETE CASCADE NOT NULL,
   can_view BOOLEAN DEFAULT FALSE,
   can_create BOOLEAN DEFAULT FALSE,
   can_edit BOOLEAN DEFAULT FALSE,
   can_delete BOOLEAN DEFAULT FALSE,
   can_admin BOOLEAN DEFAULT FALSE,
-  granted_by UUID REFERENCES public.profiles(id),
+  granted_by UUID REFERENCES public.legal_profiles(id),
   granted_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
   UNIQUE(group_id, module_id)
 );
 
-COMMENT ON TABLE public.group_module_access IS 'Defines which groups can access which modules and what they can do';
+COMMENT ON TABLE public.legal_group_module_access IS 'Defines which groups can access which modules and what they can do';
 
 -- =====================================================
 -- TABLE 5: USER GROUP MEMBERSHIP
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS public.user_group_membership (
+CREATE TABLE IF NOT EXISTS public.legal_user_group_membership (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-  group_id UUID REFERENCES public.user_groups(id) ON DELETE CASCADE NOT NULL,
-  assigned_by UUID REFERENCES public.profiles(id),
+  user_id UUID REFERENCES public.legal_profiles(id) ON DELETE CASCADE NOT NULL,
+  group_id UUID REFERENCES public.legal_user_groups(id) ON DELETE CASCADE NOT NULL,
+  assigned_by UUID REFERENCES public.legal_profiles(id),
   assigned_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
   is_active BOOLEAN DEFAULT TRUE,
   UNIQUE(user_id, group_id)
 );
 
-COMMENT ON TABLE public.user_group_membership IS 'Assigns users to groups';
+COMMENT ON TABLE public.legal_user_group_membership IS 'Assigns users to groups';
 
 -- =====================================================
 -- TABLE 6: AUDIT LOG FOR RBAC CHANGES
 -- =====================================================
 
-CREATE TABLE IF NOT EXISTS public.rbac_audit_log (
+CREATE TABLE IF NOT EXISTS public.legal_rbac_audit_log (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   action TEXT NOT NULL, -- 'group_created', 'permission_granted', 'user_assigned', etc.
   entity_type TEXT NOT NULL, -- 'group', 'module', 'permission', 'membership'
   entity_id UUID NOT NULL,
-  changed_by UUID REFERENCES public.profiles(id),
+  changed_by UUID REFERENCES public.legal_profiles(id),
   old_value JSONB,
   new_value JSONB,
   ip_address TEXT,
@@ -111,108 +111,108 @@ CREATE TABLE IF NOT EXISTS public.rbac_audit_log (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
-COMMENT ON TABLE public.rbac_audit_log IS 'Audit trail for all RBAC changes';
+COMMENT ON TABLE public.legal_rbac_audit_log IS 'Audit trail for all RBAC changes';
 
 -- =====================================================
 -- INDEXES
 -- =====================================================
 
-CREATE INDEX IF NOT EXISTS idx_user_groups_active ON public.user_groups(is_active);
-CREATE INDEX IF NOT EXISTS idx_user_groups_code ON public.user_groups(group_code);
+CREATE INDEX IF NOT EXISTS idx_user_groups_active ON public.legal_user_groups(is_active);
+CREATE INDEX IF NOT EXISTS idx_user_groups_code ON public.legal_user_groups(group_code);
 
-CREATE INDEX IF NOT EXISTS idx_system_modules_active ON public.system_modules(is_active);
-CREATE INDEX IF NOT EXISTS idx_system_modules_code ON public.system_modules(module_code);
-CREATE INDEX IF NOT EXISTS idx_system_modules_parent ON public.system_modules(parent_module_id);
+CREATE INDEX IF NOT EXISTS idx_system_modules_active ON public.legal_system_modules(is_active);
+CREATE INDEX IF NOT EXISTS idx_system_modules_code ON public.legal_system_modules(module_code);
+CREATE INDEX IF NOT EXISTS idx_system_modules_parent ON public.legal_system_modules(parent_module_id);
 
-CREATE INDEX IF NOT EXISTS idx_group_module_access_group ON public.group_module_access(group_id);
-CREATE INDEX IF NOT EXISTS idx_group_module_access_module ON public.group_module_access(module_id);
+CREATE INDEX IF NOT EXISTS idx_group_module_access_group ON public.legal_group_module_access(group_id);
+CREATE INDEX IF NOT EXISTS idx_group_module_access_module ON public.legal_group_module_access(module_id);
 
-CREATE INDEX IF NOT EXISTS idx_user_group_membership_user ON public.user_group_membership(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_group_membership_group ON public.user_group_membership(group_id);
-CREATE INDEX IF NOT EXISTS idx_user_group_membership_active ON public.user_group_membership(is_active);
+CREATE INDEX IF NOT EXISTS idx_user_group_membership_user ON public.legal_user_group_membership(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_group_membership_group ON public.legal_user_group_membership(group_id);
+CREATE INDEX IF NOT EXISTS idx_user_group_membership_active ON public.legal_user_group_membership(is_active);
 
-CREATE INDEX IF NOT EXISTS idx_rbac_audit_log_entity ON public.rbac_audit_log(entity_type, entity_id);
-CREATE INDEX IF NOT EXISTS idx_rbac_audit_log_user ON public.rbac_audit_log(changed_by);
-CREATE INDEX IF NOT EXISTS idx_rbac_audit_log_created ON public.rbac_audit_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_rbac_audit_log_entity ON public.legal_rbac_audit_log(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_rbac_audit_log_user ON public.legal_rbac_audit_log(changed_by);
+CREATE INDEX IF NOT EXISTS idx_rbac_audit_log_created ON public.legal_rbac_audit_log(created_at DESC);
 
 -- =====================================================
 -- ROW LEVEL SECURITY
 -- =====================================================
 
-ALTER TABLE public.user_groups ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.system_modules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.permissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.group_module_access ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_group_membership ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.rbac_audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.legal_user_groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.legal_system_modules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.legal_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.legal_group_module_access ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.legal_user_group_membership ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.legal_rbac_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Admins can do everything
 CREATE POLICY "Admins full access to user_groups"
-  ON public.user_groups FOR ALL
+  ON public.legal_user_groups FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM public.profiles
+      SELECT 1 FROM public.legal_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
 
 CREATE POLICY "Admins full access to system_modules"
-  ON public.system_modules FOR ALL
+  ON public.legal_system_modules FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM public.profiles
+      SELECT 1 FROM public.legal_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
 
 CREATE POLICY "Admins full access to permissions"
-  ON public.permissions FOR ALL
+  ON public.legal_permissions FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM public.profiles
+      SELECT 1 FROM public.legal_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
 
 CREATE POLICY "Admins full access to group_module_access"
-  ON public.group_module_access FOR ALL
+  ON public.legal_group_module_access FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM public.profiles
+      SELECT 1 FROM public.legal_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
 
 CREATE POLICY "Admins full access to user_group_membership"
-  ON public.user_group_membership FOR ALL
+  ON public.legal_user_group_membership FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM public.profiles
+      SELECT 1 FROM public.legal_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
 
 -- Users can view their own group memberships
 CREATE POLICY "Users can view own group memberships"
-  ON public.user_group_membership FOR SELECT
+  ON public.legal_user_group_membership FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Everyone can view active groups (for display purposes)
 CREATE POLICY "Users can view active groups"
-  ON public.user_groups FOR SELECT
+  ON public.legal_user_groups FOR SELECT
   USING (is_active = TRUE);
 
 -- Everyone can view active modules
 CREATE POLICY "Users can view active modules"
-  ON public.system_modules FOR SELECT
+  ON public.legal_system_modules FOR SELECT
   USING (is_active = TRUE);
 
 -- Audit log - admins only
 CREATE POLICY "Admins can view audit log"
-  ON public.rbac_audit_log FOR SELECT
+  ON public.legal_rbac_audit_log FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM public.profiles
+      SELECT 1 FROM public.legal_profiles
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
@@ -233,7 +233,7 @@ DECLARE
 BEGIN
   -- Admin always has access
   IF EXISTS (
-    SELECT 1 FROM public.profiles
+    SELECT 1 FROM public.legal_profiles
     WHERE id = p_user_id AND role = 'admin'
   ) THEN
     RETURN TRUE;
@@ -249,10 +249,10 @@ BEGIN
       WHEN 'admin' THEN BOOL_OR(gma.can_admin)
       ELSE FALSE
     END INTO v_has_access
-  FROM public.user_group_membership ugm
-  JOIN public.user_groups ug ON ugm.group_id = ug.id
-  JOIN public.group_module_access gma ON ug.id = gma.group_id
-  JOIN public.system_modules sm ON gma.module_id = sm.id
+  FROM public.legal_user_group_membership ugm
+  JOIN public.legal_user_groups ug ON ugm.group_id = ug.id
+  JOIN public.legal_group_module_access gma ON ug.id = gma.group_id
+  JOIN public.legal_system_modules sm ON gma.module_id = sm.id
   WHERE ugm.user_id = p_user_id
     AND ugm.is_active = TRUE
     AND ug.is_active = TRUE
@@ -280,7 +280,7 @@ RETURNS TABLE (
 BEGIN
   -- Admins see everything
   IF EXISTS (
-    SELECT 1 FROM public.profiles
+    SELECT 1 FROM public.legal_profiles
     WHERE id = p_user_id AND role = 'admin'
   ) THEN
     RETURN QUERY
@@ -295,7 +295,7 @@ BEGIN
       TRUE as can_edit,
       TRUE as can_delete,
       TRUE as can_admin
-    FROM public.system_modules sm
+    FROM public.legal_system_modules sm
     WHERE sm.is_active = TRUE
     ORDER BY sm.display_order, sm.module_name;
   ELSE
@@ -312,10 +312,10 @@ BEGIN
       BOOL_OR(gma.can_edit) as can_edit,
       BOOL_OR(gma.can_delete) as can_delete,
       BOOL_OR(gma.can_admin) as can_admin
-    FROM public.user_group_membership ugm
-    JOIN public.user_groups ug ON ugm.group_id = ug.id
-    JOIN public.group_module_access gma ON ug.id = gma.group_id
-    JOIN public.system_modules sm ON gma.module_id = sm.id
+    FROM public.legal_user_group_membership ugm
+    JOIN public.legal_user_groups ug ON ugm.group_id = ug.id
+    JOIN public.legal_group_module_access gma ON ug.id = gma.group_id
+    JOIN public.legal_system_modules sm ON gma.module_id = sm.id
     WHERE ugm.user_id = p_user_id
       AND ugm.is_active = TRUE
       AND ug.is_active = TRUE
@@ -330,7 +330,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- SEED DATA: DEFAULT GROUPS
 -- =====================================================
 
-INSERT INTO public.user_groups (group_name, group_code, description) VALUES
+INSERT INTO public.legal_user_groups (group_name, group_code, description) VALUES
 ('System Administrators', 'ADMIN', 'Full system access and configuration'),
 ('Executive Officers', 'EXECUTIVE', 'Secretary, Director Legal, Manager Legal'),
 ('Legal Officers', 'LEGAL', 'Litigation officers and legal staff'),
@@ -344,7 +344,7 @@ ON CONFLICT (group_code) DO NOTHING;
 -- SEED DATA: SYSTEM MODULES
 -- =====================================================
 
-INSERT INTO public.system_modules (module_name, module_code, description, module_url, icon, display_order) VALUES
+INSERT INTO public.legal_system_modules (module_name, module_code, description, module_url, icon, display_order) VALUES
 -- Core modules
 ('Dashboard', 'DASHBOARD', 'System dashboard and statistics', '/dashboard', 'LayoutDashboard', 1),
 ('Case Management', 'CASES', 'Legal case management system', '/cases', 'FileText', 2),
@@ -377,7 +377,7 @@ ON CONFLICT (module_code) DO NOTHING;
 -- SEED DATA: DEFAULT PERMISSIONS
 -- =====================================================
 
-INSERT INTO public.permissions (permission_name, permission_code, description, category) VALUES
+INSERT INTO public.legal_permissions (permission_name, permission_code, description, category) VALUES
 ('View', 'VIEW', 'View/read access', 'read'),
 ('Create', 'CREATE', 'Create new records', 'write'),
 ('Edit', 'EDIT', 'Edit existing records', 'write'),
@@ -392,12 +392,12 @@ ON CONFLICT (permission_code) DO NOTHING;
 -- GRANT PERMISSIONS
 -- =====================================================
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_groups TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.system_modules TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.permissions TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.group_module_access TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_group_membership TO authenticated;
-GRANT SELECT, INSERT ON public.rbac_audit_log TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.legal_user_groups TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.legal_system_modules TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.legal_permissions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.legal_group_module_access TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.legal_user_group_membership TO authenticated;
+GRANT SELECT, INSERT ON public.legal_rbac_audit_log TO authenticated;
 
 GRANT EXECUTE ON FUNCTION user_has_module_access(UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_user_accessible_modules(UUID) TO authenticated;
