@@ -1,0 +1,23 @@
+-- =====================================================
+-- DLPP LITIGATION WORKFLOW - DATABASE SETUP
+-- =====================================================
+--
+-- INSTRUCTIONS:
+-- 1. Go to https://supabase.com/dashboard
+-- 2. Open your project: yvnkyjnwvylrweyzvibs
+-- 3. Click "SQL Editor" in the left sidebar
+-- 4. Click "+ New query"
+-- 5. Copy ALL the SQL below and paste it
+-- 6. Click "Run" or press Ctrl+Enter
+-- 7. Wait for "Success. No rows returned"
+-- 8. Verify tables in the "Table Editor" section
+--
+-- This will create 8 new tables and extend the cases table
+-- with all the workflow features you need!
+-- =====================================================
+
+-- Copy everything from database-workflow-extensions.sql
+-- The complete SQL is in that file (377 lines)
+
+-- OR use this direct link to view the file:
+-- landcasesystem/database-workflow-extensions.sql
