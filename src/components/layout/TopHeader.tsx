@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -30,8 +31,63 @@ interface TopHeaderProps {
   onMobileToggle?: () => void;
 }
 
+interface UserProfile {
+  full_name: string | null;
+  email: string;
+  primaryGroup: string | null;
+}
+
+// Helper function to get initials from a name
+function getInitials(name: string): string {
+  if (!name) return 'U';
+
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+}
+
 export function TopHeader({ sidebarCollapsed, onToggleSidebar, onMobileToggle }: TopHeaderProps) {
   const router = useRouter();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get user's full name from profiles table
+      const { data: profileData } = await (supabase as any)
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+
+      // Get user's primary group
+      const { data: userGroups } = await (supabase as any)
+        .from('user_groups')
+        .select('groups(group_name)')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      const primaryGroup = userGroups?.groups?.group_name || null;
+      const fullName = profileData?.full_name || null;
+
+      setUserProfile({
+        full_name: fullName,
+        email: user.email || '',
+        primaryGroup: primaryGroup
+      });
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -86,9 +142,13 @@ export function TopHeader({ sidebarCollapsed, onToggleSidebar, onMobileToggle }:
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-emerald-600 text-white text-xs">AD</AvatarFallback>
+                <AvatarFallback className="bg-emerald-600 text-white text-xs">
+                  {userProfile ? getInitials(userProfile.full_name || userProfile.primaryGroup || userProfile.email) : 'U'}
+                </AvatarFallback>
               </Avatar>
-              <span className="hidden md:inline text-sm font-medium text-slate-700">Admin</span>
+              <span className="hidden md:inline text-sm font-medium text-slate-700">
+                {userProfile ? (userProfile.full_name || userProfile.primaryGroup || 'User') : 'Loading...'}
+              </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

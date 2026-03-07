@@ -56,7 +56,7 @@ const navigationGroups: NavGroup[] = [
     icon: LayoutDashboard,
     defaultOpen: true,
     items: [
-      { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Overview', href: '/dashboard', icon: LayoutDashboard, moduleKey: 'dashboard' },
     ],
   },
   {
@@ -202,15 +202,14 @@ export function Sidebar({
 
         const moduleKeys = await getReadableModuleKeys();
 
-        // Always allow dashboard for authenticated users
+        // Set allowed modules based on user's actual permissions
         const modules = new Set(moduleKeys);
-        modules.add('dashboard');
 
         setAllowedModules(modules);
       } catch (error) {
         console.error('Error loading permissions:', error);
-        // On error, only show dashboard
-        setAllowedModules(new Set(['dashboard']));
+        // On error, show empty set (no modules)
+        setAllowedModules(new Set());
       } finally {
         setLoadingPermissions(false);
       }
