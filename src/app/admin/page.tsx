@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+
+// IMPORTANT: This page is deprecated. Redirect to new RBAC user management
+// The new user management is at /admin/users with full RBAC group support
 import { supabase } from '@/lib/supabase';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,9 +75,9 @@ export default function AdminPage() {
   });
 
   useEffect(() => {
-    checkAdminAccess();
-    loadUsers();
-  }, []);
+    // Redirect to new RBAC user management page
+    router.push('/admin/users');
+  }, [router]);
 
   const checkAdminAccess = async () => {
     const { data: { user } } = await supabase.auth.getUser();
