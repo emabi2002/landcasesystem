@@ -202,13 +202,24 @@ export function Sidebar({
 
         const moduleKeys = await getReadableModuleKeys();
 
-        // Set allowed modules based on user's actual permissions
+        console.log('📊 User Permissions Loaded:', {
+          moduleCount: moduleKeys.length,
+          modules: moduleKeys,
+          timestamp: new Date().toISOString()
+        });
+
+        // CRITICAL: Only show modules user actually has permission for
         const modules = new Set(moduleKeys);
+
+        // If no permissions returned, show NO modules (not everything!)
+        if (moduleKeys.length === 0) {
+          console.warn('⚠️ No permissions found for user - showing empty sidebar');
+        }
 
         setAllowedModules(modules);
       } catch (error) {
-        console.error('Error loading permissions:', error);
-        // On error, show empty set (no modules)
+        console.error('❌ Error loading permissions:', error);
+        // On error, show empty set (no modules) - SAFER than showing everything
         setAllowedModules(new Set());
       } finally {
         setLoadingPermissions(false);

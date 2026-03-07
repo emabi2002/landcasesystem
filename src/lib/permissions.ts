@@ -25,12 +25,21 @@ export function clearPermissionsCache() {
 export async function getUserPermissions(): Promise<ModulePermission[]> {
   // Check cache
   if (permissionsCache && cacheTimestamp && Date.now() - cacheTimestamp < CACHE_DURATION) {
+    console.log('📦 Using cached permissions:', {
+      count: permissionsCache.length,
+      modules: permissionsCache.map(p => p.module_key)
+    });
     return permissionsCache;
   }
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    if (!user) {
+      console.warn('⚠️ No user authenticated');
+      return [];
+    }
+
+    console.log('🔍 Fetching permissions for user:', user.email);
 
     // Call the database function to get all user permissions
     const { data, error } = await (supabase as any).rpc('get_user_permissions', {
@@ -38,11 +47,21 @@ export async function getUserPermissions(): Promise<ModulePermission[]> {
     });
 
     if (error) {
-      console.error('Error fetching user permissions:', error);
+      console.error('❌ Error fetching user permissions:', error);
       return [];
     }
 
     const permissions = (data || []) as ModulePermission[];
+
+    console.log('✅ Permissions fetched successfully:', {
+      user: user.email,
+      permissionCount: permissions.length,
+      modules: permissions.map(p => ({
+        key: p.module_key,
+        name: p.module_name,
+        canRead: p.can_read
+      }))
+    });
 
     // Update cache
     permissionsCache = permissions;
@@ -50,7 +69,7 @@ export async function getUserPermissions(): Promise<ModulePermission[]> {
 
     return permissions;
   } catch (error) {
-    console.error('Error getting user permissions:', error);
+    console.error('❌ Error getting user permissions:', error);
     return [];
   }
 }
