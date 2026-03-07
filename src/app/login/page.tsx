@@ -11,8 +11,8 @@ import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@lands.gov.pg');
-  const [password, setPassword] = useState('demo123');
+  const [email, setEmail] = useState('admin@dlpp.gov.pg');
+  const [password, setPassword] = useState('Admin@2025');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
