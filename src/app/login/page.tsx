@@ -28,7 +28,7 @@ export default function LoginPage() {
       if (error) throw error;
 
       toast.success('Login successful!');
-      router.push('/dashboard');
+      router.push('/cases');
       router.refresh();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to login';
