@@ -1,6 +1,23 @@
 -- ===============================================
 -- Setup Case Officer Group - Full Permissions
 -- ===============================================
+-- ⚠️  OPTIONAL SCRIPT - UI METHOD RECOMMENDED!
+--
+-- This is an OPTIONAL automated setup script.
+-- You can do everything through the UI instead:
+--
+-- UI Method (Recommended):
+--   1. Login → Administration → Groups
+--   2. Find/Create "Case Officer" group
+--   3. Click "Manage Permissions"
+--   4. Check/uncheck boxes for each module
+--   5. Click "Save"
+--
+-- See: ADMIN_UI_PERMISSION_GUIDE.md for step-by-step instructions
+--
+-- Only run this SQL if you prefer automated setup.
+-- ===============================================
+--
 -- This script ensures Case Officers can see and use:
 -- ✅ Case Workflow menu (Register, Assignments, My Cases, All Cases, Directions, Compliance, Notifications)
 -- ✅ Case Management menu (Calendar, Tasks, Documents, Land Parcels)
