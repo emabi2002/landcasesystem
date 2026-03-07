@@ -30,6 +30,7 @@ import type { Group } from '@/lib/rbac-types';
 import { format } from 'date-fns';
 import { AddUserDialog } from '@/components/admin/AddUserDialog';
 import { EditUserDialog } from '@/components/admin/EditUserDialog';
+import { ManageUserGroupsDialog } from '@/components/admin/ManageUserGroupsDialog';
 
 interface AuthUser {
   id: string;
@@ -334,11 +335,10 @@ export default function UsersAdminPage() {
                       <Button
                         onClick={() => openAssignDialog(user)}
                         size="sm"
-                        variant="outline"
-                        className="gap-2"
+                        className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                       >
-                        <UserPlus className="h-4 w-4" />
-                        Assign Group
+                        <Settings className="h-4 w-4" />
+                        Manage Groups
                       </Button>
                       <Button
                         onClick={() => handleDeleteUser(user)}
@@ -365,67 +365,18 @@ export default function UsersAdminPage() {
         )}
       </div>
 
-      {/* Assign Group Dialog */}
-      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Assign User to Group</DialogTitle>
-            <DialogDescription>
-              Add {selectedUser?.email} to a group to grant permissions
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Select Group</Label>
-              <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a group..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {groups
-                    .filter(group => !selectedUser?.groups.some(ug => ug.id === group.id))
-                    .map((group) => (
-                      <SelectItem key={group.id} value={group.id}>
-                        {group.group_name}
-                        {group.description && (
-                          <span className="text-xs text-slate-500 ml-2">
-                            - {group.description}
-                          </span>
-                        )}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {selectedUser && selectedUser.groups.length > 0 && (
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-xs text-blue-800">
-                  <strong>Note:</strong> This user is already in {selectedUser.groups.length} group(s).
-                  Adding to another group will grant additional permissions.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAssignDialogOpen(false)}
-              disabled={assigning}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={assignUserToGroup}
-              disabled={!selectedGroupId || assigning}
-            >
-              {assigning ? 'Assigning...' : 'Assign to Group'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Manage User Groups Dialog */}
+      {selectedUser && (
+        <ManageUserGroupsDialog
+          open={assignDialogOpen}
+          onOpenChange={setAssignDialogOpen}
+          onSuccess={loadData}
+          userId={selectedUser.id}
+          userEmail={selectedUser.email}
+          currentGroups={selectedUser.groups}
+          allGroups={groups}
+        />
+      )}
 
       {/* Create User Dialog */}
       <AddUserDialog
