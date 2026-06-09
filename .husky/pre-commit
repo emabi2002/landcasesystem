@@ -1,0 +1,13 @@
+#!/bin/sh
+echo "🔍 Running pre-commit checks..."
+
+# Run lint
+echo "📝 Running ESLint..."
+bun run lint
+
+if [ $? -ne 0 ]; then
+  echo "❌ Lint check failed. Please fix errors before committing."
+  exit 1
+fi
+
+echo "✅ Pre-commit checks passed!"
