@@ -145,7 +145,7 @@ export default function IntakeListPage() {
             <h1 className="text-3xl font-bold text-gray-900">Document Intake Records</h1>
             <p className="text-gray-600 mt-2">All documents received at front counter</p>
           </div>
-          <Link href="/reception">
+          <Link href="/cases/new">
             <Button style={{ background: '#EF5A5A' }} className="text-white">
               <Plus className="mr-2 h-4 w-4" />
               Register New Document
@@ -251,7 +251,7 @@ export default function IntakeListPage() {
               <div className="text-center py-12">
                 <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <p className="text-gray-500 mb-4">No intake records found</p>
-                <Link href="/reception">
+                <Link href="/cases/new">
                   <Button>Register First Document</Button>
                 </Link>
               </div>

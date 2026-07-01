@@ -137,7 +137,13 @@ export function TopHeader({ sidebarCollapsed, onToggleSidebar, onMobileToggle }:
         <div className="md:hidden">
           <GlobalSearch />
         </div>
-        <Button variant="ghost" size="icon" className="relative text-slate-600 hover:text-slate-900">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push('/notifications')}
+          title="Notifications"
+          className="relative text-slate-600 hover:text-slate-900"
+        >
           <Bell className="h-5 w-5" />
           <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500"></span>
         </Button>
@@ -158,11 +164,11 @@ export function TopHeader({ sidebarCollapsed, onToggleSidebar, onMobileToggle }:
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>
               <Users className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>

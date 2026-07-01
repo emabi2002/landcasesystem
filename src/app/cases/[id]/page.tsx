@@ -16,6 +16,16 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { AddPartyDialog } from '@/components/forms/AddPartyDialog';
 import { AddDocumentDialog } from '@/components/forms/AddDocumentDialog';
 import { AddTaskDialog } from '@/components/forms/AddTaskDialog';
@@ -202,6 +212,8 @@ export default function CaseDetailPage() {
   const [respondingToAlert, setRespondingToAlert] = useState<string | null>(null);
   const [alertResponse, setAlertResponse] = useState('');
   const [updatingStage, setUpdatingStage] = useState(false);
+  const [pendingStage, setPendingStage] = useState<{ value: string; label: string } | null>(null);
+  const [timelineKey, setTimelineKey] = useState(0);
 
   // Dialog states for programmatic control
   const [partyDialogOpen, setPartyDialogOpen] = useState(false);
@@ -300,38 +312,73 @@ export default function CaseDetailPage() {
     return variants[status] || { className: 'bg-gray-100 text-gray-800', label: status };
   };
 
-  const handleUpdateStage = async (newStatus: string) => {
+  // Core write: update the case status and record an audit-trail entry (also shown on the Timeline).
+  const persistStageChange = async (newStatus: string, description: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { error } = await (supabase as any)
+      .from('cases')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', caseId);
+    if (error) throw error;
+
+    // Best-effort audit trail entry (picked up by the Case Timeline as a status change)
+    try {
+      await (supabase as any).from('case_history').insert({
+        case_id: caseId,
+        action: 'Stage Updated',
+        description,
+        performed_by: user?.id ?? null,
+      });
+    } catch {
+      // history table is optional; ignore failures
+    }
+  };
+
+  // Open the confirmation dialog for a manual stage change.
+  const requestStageChange = (newStatus: string) => {
     if (!caseData || !newStatus || canonicalStage(caseData.status) === newStatus) return;
+    setPendingStage({ value: newStatus, label: stageLabel(newStatus) });
+  };
+
+  // Runs after the user confirms in the dialog.
+  const confirmStageChange = async () => {
+    if (!caseData || !pendingStage) return;
+    const target = pendingStage;
+    setPendingStage(null);
     setUpdatingStage(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      const { error } = await (supabase as any)
-        .from('cases')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', caseId);
-      if (error) throw error;
-
-      // Best-effort audit trail entry
-      try {
-        await (supabase as any).from('case_history').insert({
-          case_id: caseId,
-          action: 'Stage Updated',
-          description: `Case stage changed to "${stageLabel(newStatus)}"`,
-          performed_by: user?.id ?? null,
-        });
-      } catch {
-        // history table is optional; ignore failures
-      }
-
-      toast.success(`Case moved to ${stageLabel(newStatus)}`);
+      await persistStageChange(target.value, `Case stage changed to "${target.label}"`);
+      toast.success(`Case moved to ${target.label}`);
       await loadCaseData();
+      setTimelineKey((k) => k + 1);
     } catch (error) {
       console.error('Error updating stage:', error);
       toast.error('Failed to update case stage');
     } finally {
       setUpdatingStage(false);
     }
+  };
+
+  // Auto-advance the case when a key milestone happens. Only ever moves the case forward.
+  const maybeAutoAdvance = async (targetStatus: string, reason: string) => {
+    if (!caseData) return;
+    const curIdx = WORKFLOW_STAGES.findIndex((s) => s.value === canonicalStage(caseData.status));
+    const targetIdx = WORKFLOW_STAGES.findIndex((s) => s.value === targetStatus);
+    if (targetIdx < 0 || targetIdx <= curIdx) return; // never move backward
+    try {
+      await persistStageChange(targetStatus, `Auto-advanced to "${stageLabel(targetStatus)}" (${reason})`);
+      toast.info(`Stage auto-advanced to ${stageLabel(targetStatus)}`);
+    } catch (error) {
+      console.error('Auto-advance failed:', error);
+    }
+  };
+
+  // Registering a court order moves the case to the Judgment stage.
+  const handleCourtOrderRegistered = async () => {
+    await maybeAutoAdvance('judgment', 'court order registered');
+    await loadCaseData();
+    setTimelineKey((k) => k + 1);
   };
 
   const handleAlertResponse = async (alertId: string) => {
@@ -479,7 +526,7 @@ export default function CaseDetailPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Select
                     value={currentStageIdx >= 0 ? currentStage : ''}
-                    onValueChange={handleUpdateStage}
+                    onValueChange={requestStageChange}
                     disabled={updatingStage}
                   >
                     <SelectTrigger className="h-9 w-[190px]">
@@ -496,7 +543,7 @@ export default function CaseDetailPage() {
                   {nextStage && (
                     <Button
                       size="sm"
-                      onClick={() => handleUpdateStage(nextStage.value)}
+                      onClick={() => requestStageChange(nextStage.value)}
                       disabled={updatingStage}
                       className="gap-1 bg-blue-600 hover:bg-blue-700"
                     >
@@ -740,7 +787,7 @@ export default function CaseDetailPage() {
             {/* Case Timeline */}
             <Card>
               <CardContent className="pt-6">
-                <CaseTimeline caseId={caseId} caseCreatedAt={caseData.created_at} />
+                <CaseTimeline caseId={caseId} caseCreatedAt={caseData.created_at} refreshKey={timelineKey} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -1308,7 +1355,7 @@ export default function CaseDetailPage() {
                   <AddCourtOrderDialog
                     caseId={caseId}
                     caseNumber={caseData.case_number}
-                    onSuccess={loadCaseData}
+                    onSuccess={handleCourtOrderRegistered}
                   />
                 </div>
               </CardHeader>
@@ -1610,6 +1657,38 @@ export default function CaseDetailPage() {
             onOpenChange={setEditLandParcelDialogOpen}
           />
         )}
+
+        {/* Stage change confirmation */}
+        <AlertDialog
+          open={pendingStage !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingStage(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Move case to “{pendingStage?.label}”?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {caseData
+                  ? `This will change the workflow stage from “${stageLabel(caseData.status)}” to “${pendingStage?.label}”. A record of this change is added to the case timeline.`
+                  : ''}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={updatingStage}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  confirmStageChange();
+                }}
+                disabled={updatingStage}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {updatingStage ? 'Updating…' : 'Confirm'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppLayout>
   );

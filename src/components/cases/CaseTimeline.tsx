@@ -43,6 +43,8 @@ interface TimelineEvent {
 interface CaseTimelineProps {
   caseId: string;
   caseCreatedAt: string;
+  /** Bump this value to force the timeline to reload (e.g. after a new action is recorded). */
+  refreshKey?: number;
 }
 
 const eventIcons: Record<string, React.ElementType> = {
@@ -84,7 +86,7 @@ const eventTypeLabels: Record<string, string> = {
   communication: 'Communications',
 };
 
-export function CaseTimeline({ caseId, caseCreatedAt }: CaseTimelineProps) {
+export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimelineProps) {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,7 +105,8 @@ export function CaseTimeline({ caseId, caseCreatedAt }: CaseTimelineProps) {
 
   useEffect(() => {
     loadTimelineEvents();
-  }, [caseId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caseId, refreshKey]);
 
   useEffect(() => {
     applyFilters();

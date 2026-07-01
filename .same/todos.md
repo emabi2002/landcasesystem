@@ -1,5 +1,17 @@
 # Land Case System - Todos
 
+## Working-tree recovery & stage control completion (current)
+
+- [x] Detected empty local `.git` (container reset); re-initialised git and reattached to `origin/main`
+- [x] Confirmed working tree is NEWER than last commit `0f58f55` (extra improvements not yet committed)
+- [x] Verified 6 removed files were deprecated redirect stubs (closure, compliance-tracking, litigation*, reception)
+- [x] Fixed broken references to removed routes in `DashboardNav.tsx` (`/litigation`,`/closure` -> `/cases`)
+- [x] Fixed TS error: added optional `refreshKey` prop to `CaseTimeline` + refetch on change
+- [x] Added the MISSING stage-change confirmation `AlertDialog` (control was non-functional without it)
+- [x] TypeScript compiles cleanly (0 errors)
+- [ ] Create version snapshot
+- [ ] Commit newer working-tree state and push to GitHub
+
 ## System Review & Process Flow Task
 
 - [x] Clone repo, install deps, connect Supabase, verify login

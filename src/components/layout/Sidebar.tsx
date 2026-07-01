@@ -32,6 +32,8 @@ import {
   UserCheck,
   Database,
   Package,
+  Inbox,
+  Download,
 } from 'lucide-react';
 
 interface NavItem {
@@ -125,6 +127,7 @@ const navigationGroups: NavGroup[] = [
     icon: MessageSquare,
     defaultOpen: false,
     items: [
+      { name: 'Document Intake', href: '/reception/list', icon: Inbox, moduleKey: 'correspondence' },
       { name: 'Correspondence', href: '/correspondence', icon: Mail, moduleKey: 'correspondence' },
       { name: 'Communications', href: '/communications', icon: MessageSquare, moduleKey: 'communications' },
       { name: 'File Requests', href: '/file-requests', icon: FileSearch, moduleKey: 'file_requests' },
@@ -153,6 +156,7 @@ const navigationGroups: NavGroup[] = [
     defaultOpen: false,
     items: [
       { name: 'Reports', href: '/reports', icon: BarChart3, moduleKey: 'reports' },
+      { name: 'Scheduled Exports', href: '/settings/exports', icon: Download, moduleKey: 'reports' },
     ],
   },
   {
