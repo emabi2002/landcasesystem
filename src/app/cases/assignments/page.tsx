@@ -145,7 +145,7 @@ export default function CaseAssignmentsPage() {
             case_id: selectedCase.id,
             action: 'Case Assigned',
             description: `Case assigned to officer. ${assignmentNotes ? `Notes: ${assignmentNotes}` : ''}`,
-            created_by: user.id,
+            performed_by: user.id,
           });
       } catch (e) {
         console.log('History table not available, continuing...');

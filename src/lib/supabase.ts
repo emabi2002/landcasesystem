@@ -11,6 +11,11 @@ if (!isSupabaseConfigured) {
   console.warn('⚠️ Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.');
 }
 
+// Fallback values so the app can still render (createClient throws on an empty URL).
+// Real Supabase calls will only succeed once valid env vars are provided.
+const clientUrl = supabaseUrl || 'https://placeholder.supabase.co';
+const clientAnonKey = supabaseAnonKey || 'placeholder-anon-key';
+
 /** Minimal JSON helper used in table shapes below. */
 export type Json =
   | string
@@ -457,4 +462,4 @@ export type Database = {
   };
 };
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient<Database>(clientUrl, clientAnonKey);

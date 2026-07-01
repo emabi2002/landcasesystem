@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AddPartyDialog } from '@/components/forms/AddPartyDialog';
 import { AddDocumentDialog } from '@/components/forms/AddDocumentDialog';
 import { AddTaskDialog } from '@/components/forms/AddTaskDialog';
@@ -35,6 +36,7 @@ import { AddCourtOrderDialog } from '@/components/forms/AddCourtOrderDialog';
 import { CaseClosureDialog } from '@/components/forms/CaseClosureDialog';
 import {
   ArrowLeft,
+  ArrowRight,
   Edit,
   FileText,
   Users,
@@ -158,6 +160,29 @@ interface CourtOrder {
   created_at: string;
 }
 
+/* ---------- Workflow stage helpers ---------- */
+const WORKFLOW_STAGES: { value: string; label: string }[] = [
+  { value: 'under_review', label: 'Registered' },
+  { value: 'assigned', label: 'Assigned' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'in_court', label: 'Directions' },
+  { value: 'hearing', label: 'Hearing' },
+  { value: 'judgment', label: 'Judgment' },
+  { value: 'compliance', label: 'Compliance' },
+];
+
+// Normalise DB status values that share a stage with a canonical value above.
+const STAGE_ALIASES: Record<string, string> = {
+  registered: 'under_review',
+  directions: 'in_court',
+  mediation: 'hearing',
+  tribunal: 'hearing',
+};
+
+const canonicalStage = (status: string) => STAGE_ALIASES[status] ?? status;
+const stageLabel = (status: string) =>
+  WORKFLOW_STAGES.find((s) => s.value === canonicalStage(status))?.label ?? status;
+
 /* ---------- Component ---------- */
 export default function CaseDetailPage() {
   const router = useRouter();
@@ -176,6 +201,7 @@ export default function CaseDetailPage() {
   const [courtOrders, setCourtOrders] = useState<CourtOrder[]>([]);
   const [respondingToAlert, setRespondingToAlert] = useState<string | null>(null);
   const [alertResponse, setAlertResponse] = useState('');
+  const [updatingStage, setUpdatingStage] = useState(false);
 
   // Dialog states for programmatic control
   const [partyDialogOpen, setPartyDialogOpen] = useState(false);
@@ -274,6 +300,40 @@ export default function CaseDetailPage() {
     return variants[status] || { className: 'bg-gray-100 text-gray-800', label: status };
   };
 
+  const handleUpdateStage = async (newStatus: string) => {
+    if (!caseData || !newStatus || canonicalStage(caseData.status) === newStatus) return;
+    setUpdatingStage(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error } = await (supabase as any)
+        .from('cases')
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', caseId);
+      if (error) throw error;
+
+      // Best-effort audit trail entry
+      try {
+        await (supabase as any).from('case_history').insert({
+          case_id: caseId,
+          action: 'Stage Updated',
+          description: `Case stage changed to "${stageLabel(newStatus)}"`,
+          performed_by: user?.id ?? null,
+        });
+      } catch {
+        // history table is optional; ignore failures
+      }
+
+      toast.success(`Case moved to ${stageLabel(newStatus)}`);
+      await loadCaseData();
+    } catch (error) {
+      console.error('Error updating stage:', error);
+      toast.error('Failed to update case stage');
+    } finally {
+      setUpdatingStage(false);
+    }
+  };
+
   const handleAlertResponse = async (alertId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -329,6 +389,14 @@ export default function CaseDetailPage() {
       </AppLayout>
     );
   }
+
+  const currentStage = canonicalStage(caseData.status);
+  const currentStageIdx = WORKFLOW_STAGES.findIndex((s) => s.value === currentStage);
+  const nextStage =
+    currentStageIdx >= 0 && currentStageIdx < WORKFLOW_STAGES.length - 1
+      ? WORKFLOW_STAGES[currentStageIdx + 1]
+      : null;
+  const isClosedOrSettled = caseData.status === 'closed' || caseData.status === 'settled';
 
   return (
     <AppLayout>
@@ -404,6 +472,44 @@ export default function CaseDetailPage() {
               steps={getWorkflowStepsFromStatus(caseData.status, caseData)}
               orientation="horizontal"
             />
+
+            {!isClosedOrSettled && (
+              <div className="mt-10 pt-4 border-t border-slate-200 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <span className="text-sm font-medium text-slate-700">Update stage:</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    value={currentStageIdx >= 0 ? currentStage : ''}
+                    onValueChange={handleUpdateStage}
+                    disabled={updatingStage}
+                  >
+                    <SelectTrigger className="h-9 w-[190px]">
+                      <SelectValue placeholder="Select stage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WORKFLOW_STAGES.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>
+                          {s.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {nextStage && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateStage(nextStage.value)}
+                      disabled={updatingStage}
+                      className="gap-1 bg-blue-600 hover:bg-blue-700"
+                    >
+                      {updatingStage ? 'Updating…' : `Advance to ${nextStage.label}`}
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <span className="text-xs text-slate-400 sm:ml-auto">
+                  Final closure is completed in the Closure tab.
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 

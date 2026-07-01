@@ -1,5 +1,18 @@
 # Land Case System - Todos
 
+## System Review & Process Flow Task
+
+- [x] Clone repo, install deps, connect Supabase, verify login
+- [x] Search for placeholders / TODO / "coming soon" stubs — none found (only HTML input placeholders)
+- [x] Map sidebar navigation + all page routes
+- [x] Map all API routes and where each is called (found 6 orphaned routes)
+- [x] Verify DB schema vs code (found case_reference/case_title mismatch bug)
+- [x] Fix clear, safe bugs (assign-officer, assignment-status, search routes) via audit agent
+- [x] Verify TypeScript compiles cleanly (0 errors)
+- [x] Read core workflow: register route, assignment, case hub (12 tabs), closure, workflow stepper
+- [x] Author SYSTEM_PROCESS_FLOW.md document
+- [x] Write review report to user + version
+
 ## Completed Tasks
 
 ### Filing Dialog Enhancement (Version 82)
