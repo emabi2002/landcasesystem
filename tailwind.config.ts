@@ -10,6 +10,14 @@ export default {
   theme: {
     extend: {
       colors: {
+        dlpp: {
+          purple: '#4A4284',
+          'purple-dark': '#3A3468',
+          'purple-light': '#5A5294',
+          red: '#EF5A5A',
+          'red-dark': '#D94A4A',
+          gold: '#D4A574',
+        },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

@@ -1,6 +1,57 @@
 # Land Case System - Todos
 
-## Working-tree recovery & stage control completion (current)
+## Help enhancements + GitHub deploy (current)
+
+- [x] Add `LabelWithHelp` reusable component
+- [x] Add HelpTooltips to Reception (Correspondence) dialog
+- [x] Add HelpTooltips to Directions dialog
+- [x] Add HelpTooltips to Compliance dialog
+- [x] Add HelpTooltips to Filings dialog
+- [x] Add welcome tour + auto-start after first login (`WelcomeTour`)
+- [x] Add "Take the welcome tour" button in Help Centre
+- [x] Add `data-tour` anchors to Case Details (header, edit, workflow, stage, tabs)
+- [x] Update case-details tour to highlight real elements
+- [x] tsc clean, all routes 200
+- [ ] Version snapshot
+- [ ] Commit + push to GitHub (emabi2002/landcasesystem)
+
+## Connect Supabase (done)
+
+- [x] Created `.env.local` with NEXT_PUBLIC_SUPABASE_URL / ANON_KEY / SERVICE keys
+- [x] Restarted dev server — loads `.env.local`, warning gone
+- [x] Verified auth health (200) and cases table returns live data
+- [x] Verified admin login works (admin@dlpp.gov.pg / Admin@2025)
+- [x] Verified admin has 45 module permissions (sidebar will populate)
+- [x] All routes 200, no runtime errors
+
+## Interactive Help Menu Facility (current)
+
+- [x] Install driver.js for guided tours
+- [x] Create `src/help/help-content.ts` (types, 26 topics, route matcher, 17 tours)
+- [x] Create `HelpProvider` context (drawer state, role, tour)
+- [x] Create `HelpTooltip` (question-mark popover)
+- [x] Create `GuidedTour` (driver.js hook + DLPP styling)
+- [x] Create `HelpArticle` (shared article renderer) + `HelpTopicIcon`
+- [x] Create `HelpDrawer` (right-side, route-aware, Start Tour, related topics, back link)
+- [x] Create `HelpButton` (floating, hidden on /login)
+- [x] Create `HelpCentre` (searchable, role filter, categories, articles)
+- [x] Add `/help` route page
+- [x] Mount provider + button + drawer globally in ClientBody (non-breaking)
+- [x] Add "Help Centre" nav item to Sidebar
+- [x] Add DLPP color tokens to tailwind config (opacity support)
+- [x] Add `data-tour` anchors to Dashboard, Cases, New Case
+- [x] Add sample HelpTooltips to New Case fields
+- [x] tsc clean (0 errors), all routes 200
+- [ ] Version + screenshot review
+
+## Fresh clone into Same (current)
+
+- [x] Cloned `landcasesystem` from GitHub into workspace
+- [x] Installed dependencies with bun (575 packages)
+- [x] Started Next.js dev server (all routes compile: /, /login, /cases, /dashboard, /calendar return 200)
+- [ ] Add Supabase env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) so login + data work
+
+## Working-tree recovery & stage control completion (previous)
 
 - [x] Detected empty local `.git` (container reset); re-initialised git and reattached to `origin/main`
 - [x] Confirmed working tree is NEWER than last commit `0f58f55` (extra improvements not yet committed)

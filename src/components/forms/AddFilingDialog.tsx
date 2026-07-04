@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { LabelWithHelp } from '@/components/help';
 import { toast } from 'sonner';
 import { FileText, Upload, X, Paperclip, Loader2, Check, FolderOpen, File, FileImage, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -466,7 +467,13 @@ export function AddFilingDialog({ open, onOpenChange, onSuccess }: AddFilingDial
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="filing_type">Filing Type *</Label>
+              <LabelWithHelp
+                htmlFor="filing_type"
+                helpTitle="Filing Type"
+                help="The kind of document being filed (Affidavit, Motion, Response, Brief, Notice, etc.). This helps organise and find filings on the case."
+              >
+                Filing Type *
+              </LabelWithHelp>
               <Select value={formData.filing_type} onValueChange={(value) => handleChange('filing_type', value)}>
                 <SelectTrigger id="filing_type">
                   <SelectValue />
@@ -484,7 +491,13 @@ export function AddFilingDialog({ open, onOpenChange, onSuccess }: AddFilingDial
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="filing_number">Filing Number</Label>
+              <LabelWithHelp
+                htmlFor="filing_number"
+                helpTitle="Filing Number"
+                help="The reference number for the filing. If the court returns a stamped filing number, record it here so the document can be traced."
+              >
+                Filing Number
+              </LabelWithHelp>
               <Input
                 id="filing_number"
                 value={formData.filing_number}
@@ -517,7 +530,13 @@ export function AddFilingDialog({ open, onOpenChange, onSuccess }: AddFilingDial
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="submitted_to">Submit to (Lawyer)</Label>
+            <LabelWithHelp
+              htmlFor="submitted_to"
+              helpTitle="Submit to (Lawyer)"
+              help="The external lawyer or body the filing is being sent to. Leave blank if it is being filed directly with the court."
+            >
+              Submit to (Lawyer)
+            </LabelWithHelp>
             <Select value={formData.submitted_to} onValueChange={(value) => handleChange('submitted_to', value)}>
               <SelectTrigger id="submitted_to">
                 <SelectValue placeholder="Select a lawyer (optional)" />

@@ -43,7 +43,9 @@ export function DashboardOverview() {
   return (
     <div className="space-y-6">
       {/* Key Metrics */}
-      <KeyMetricsCards stats={stats} pendingAlerts={pendingAlerts} />
+      <div data-tour="dashboard-metrics">
+        <KeyMetricsCards stats={stats} pendingAlerts={pendingAlerts} />
+      </div>
 
       {/* Workflow Progress */}
       <WorkflowProgressCard workflowProgress={stats.workflowProgress} />
@@ -61,7 +63,7 @@ export function DashboardOverview() {
       />
 
       {/* Charts Row 1: Monthly Trend & Status Distribution */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div data-tour="dashboard-charts" className="grid gap-4 lg:grid-cols-2">
         <MonthlyTrendChart data={stats.monthlyTrend} />
         <StatusDistributionChart data={statusData} />
       </div>
@@ -73,10 +75,12 @@ export function DashboardOverview() {
       </div>
 
       {/* Alerts Section */}
-      <AlertsNotificationCard
-        upcomingEvents={stats.upcomingEvents}
-        overdueTasks={stats.overdueTasks}
-      />
+      <div data-tour="dashboard-alerts">
+        <AlertsNotificationCard
+          upcomingEvents={stats.upcomingEvents}
+          overdueTasks={stats.overdueTasks}
+        />
+      </div>
     </div>
   );
 }

@@ -458,7 +458,7 @@ export default function CaseDetailPage() {
               </Button>
             </Link>
 
-            <div className="flex items-center gap-3 mb-2">
+            <div data-tour="case-header" className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold text-slate-900">
                 {String(caseData.title ?? 'Untitled Case')}
               </h1>
@@ -473,7 +473,9 @@ export default function CaseDetailPage() {
             )}
           </div>
 
-          <EditCaseDialog caseData={caseData} onSuccess={loadCaseData} />
+          <div data-tour="case-edit">
+            <EditCaseDialog caseData={caseData} onSuccess={loadCaseData} />
+          </div>
         </div>
 
         {/* Case Info Cards */}
@@ -507,7 +509,7 @@ export default function CaseDetailPage() {
         </div>
 
         {/* Workflow Progress Stepper */}
-        <Card className="border-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+        <Card data-tour="case-workflow" className="border-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Scale className="h-4 w-4 text-slate-600" />
@@ -521,7 +523,7 @@ export default function CaseDetailPage() {
             />
 
             {!isClosedOrSettled && (
-              <div className="mt-10 pt-4 border-t border-slate-200 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div data-tour="case-stage" className="mt-10 pt-4 border-t border-slate-200 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <span className="text-sm font-medium text-slate-700">Update stage:</span>
                 <div className="flex flex-wrap items-center gap-2">
                   <Select
@@ -562,7 +564,7 @@ export default function CaseDetailPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="flex flex-wrap gap-1 h-auto p-1">
+          <TabsList data-tour="case-tabs" className="flex flex-wrap gap-1 h-auto p-1">
             <TabsTrigger value="overview" className="text-xs px-3">Overview</TabsTrigger>
             <TabsTrigger value="parties" className="text-xs px-3">Parties ({parties.length})</TabsTrigger>
             <TabsTrigger value="documents" className="text-xs px-3">Documents ({documents.length})</TabsTrigger>

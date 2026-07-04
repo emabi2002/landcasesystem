@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LabelWithHelp } from '@/components/help';
 import { toast } from 'sonner';
 
 interface AddDirectionDialogProps {
@@ -85,7 +86,13 @@ export function AddDirectionDialog({ open, onOpenChange, onSuccess }: AddDirecti
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="source">Source *</Label>
+              <LabelWithHelp
+                htmlFor="source"
+                helpTitle="Source"
+                help="Who issued the direction (Secretary Lands, Director or Manager Legal Services). This shows the authority behind the instruction."
+              >
+                Source *
+              </LabelWithHelp>
               <Select value={formData.source} onValueChange={(value) => handleChange('source', value)}>
                 <SelectTrigger id="source">
                   <SelectValue />
@@ -110,7 +117,13 @@ export function AddDirectionDialog({ open, onOpenChange, onSuccess }: AddDirecti
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="due_date">Due Date</Label>
+              <LabelWithHelp
+                htmlFor="due_date"
+                helpTitle="Due Date"
+                help="When the direction must be completed. Setting a due date lets the system chase it and show it in deadline alerts."
+              >
+                Due Date
+              </LabelWithHelp>
               <Input
                 id="due_date"
                 type="date"
@@ -120,7 +133,13 @@ export function AddDirectionDialog({ open, onOpenChange, onSuccess }: AddDirecti
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="priority">Priority *</Label>
+              <LabelWithHelp
+                htmlFor="priority"
+                helpTitle="Priority"
+                help="How urgent the direction is. Use High or Urgent for time-critical instructions so they stand out to the responsible officer."
+              >
+                Priority *
+              </LabelWithHelp>
               <Select value={formData.priority} onValueChange={(value) => handleChange('priority', value)}>
                 <SelectTrigger id="priority">
                   <SelectValue />
@@ -147,7 +166,13 @@ export function AddDirectionDialog({ open, onOpenChange, onSuccess }: AddDirecti
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content">Direction Content *</Label>
+            <LabelWithHelp
+              htmlFor="content"
+              helpTitle="Direction Content"
+              help="Write the full instruction exactly as given. Be specific about what must be done so the responsible officer has no doubt about the action required."
+            >
+              Direction Content *
+            </LabelWithHelp>
             <Textarea
               id="content"
               value={formData.content}

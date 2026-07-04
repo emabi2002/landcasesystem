@@ -34,6 +34,7 @@ import {
   Package,
   Inbox,
   Download,
+  LifeBuoy,
 } from 'lucide-react';
 
 interface NavItem {
@@ -170,6 +171,15 @@ const navigationGroups: NavGroup[] = [
       { name: 'User Management', href: '/admin/users', icon: UserCog, moduleKey: 'users' },
       { name: 'Groups', href: '/admin/groups', icon: Users, moduleKey: 'groups' },
       { name: 'Modules', href: '/admin/modules', icon: Package, moduleKey: 'modules' },
+    ],
+  },
+  {
+    name: 'Help & Support',
+    icon: LifeBuoy,
+    defaultOpen: false,
+    items: [
+      // No moduleKey => always visible to every signed-in user.
+      { name: 'Help Centre', href: '/help', icon: LifeBuoy },
     ],
   },
 ];
@@ -373,7 +383,7 @@ export function Sidebar({
           )}
         </div>
 
-        <nav className="h-[calc(100vh-4rem)] overflow-y-auto py-4 px-2">
+        <nav data-tour="app-sidebar" className="h-[calc(100vh-4rem)] overflow-y-auto py-4 px-2">
           <div className="space-y-1">
             {visibleGroups.map((group) => {
               const GroupIcon = group.icon;

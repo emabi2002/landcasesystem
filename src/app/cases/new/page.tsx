@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SelectWithAdd } from '@/components/ui/select-with-add';
+import { HelpTooltip } from '@/components/help';
 import { ArrowLeft, Save, X } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -126,6 +127,7 @@ export default function NewCasePage() {
                 </Button>
               </Link>
               <Button
+                data-tour="newcase-save"
                 onClick={handleSubmit}
                 disabled={loading}
                 size="sm"
@@ -139,7 +141,7 @@ export default function NewCasePage() {
         </div>
 
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="max-w-7xl mx-auto px-6 py-6">
+        <form data-tour="newcase-form" onSubmit={handleSubmit} className="max-w-7xl mx-auto px-6 py-6">
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
 
             {/* DLPP Role Toggle */}
@@ -192,7 +194,13 @@ export default function NewCasePage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-600">Court File Number</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-xs text-slate-600">Court File Number</Label>
+                      <HelpTooltip
+                        title="Court File Number"
+                        content="The reference the court uses for this matter (for example NC 123/2025). Copy it exactly from a court document. Leave blank if the matter is not yet in court."
+                      />
+                    </div>
                     <Input
                       placeholder="e.g., NC 123/2025"
                       value={formData.court_file_number}
@@ -229,7 +237,13 @@ export default function NewCasePage() {
                 </h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs text-slate-600">Parties to Proceedings</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-xs text-slate-600">Parties to Proceedings</Label>
+                      <HelpTooltip
+                        title="Parties to Proceedings"
+                        content="List the parties in the matter, for example 'John Doe v. Department of Lands & Physical Planning'. Use the exact legal names as they appear on official documents."
+                      />
+                    </div>
                     <Textarea
                       placeholder="e.g., John Doe v. Department of Lands & Physical Planning"
                       value={formData.parties_description}
@@ -508,7 +522,13 @@ export default function NewCasePage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-600">Priority</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-xs text-slate-600">Priority</Label>
+                      <HelpTooltip
+                        title="Priority"
+                        content="How urgent the case is. Set 'High' or 'Urgent' for matters with close deadlines so they stand out to managers on the Dashboard and in alerts."
+                      />
+                    </div>
                     <SelectWithAdd
                       value={formData.priority}
                       onValueChange={(value) => handleChange('priority', value)}
@@ -519,7 +539,13 @@ export default function NewCasePage() {
                     />
                   </div>
                   <div className="lg:col-span-2">
-                    <Label className="text-xs text-slate-600">Case Title</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-xs text-slate-600">Case Title</Label>
+                      <HelpTooltip
+                        title="Case Title"
+                        content="A short, clear name so the case can be recognised and found later. Include a party name or location, for example 'Kila v State — Portion 123 Waigani'. Avoid vague titles like 'Land case'."
+                      />
+                    </div>
                     <Input
                       placeholder="Brief descriptive title"
                       value={formData.title}

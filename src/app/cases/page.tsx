@@ -583,7 +583,7 @@ export default function CasesPage() {
               {/* Export Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" disabled={exporting || filteredCases.length === 0}>
+                  <Button data-tour="cases-export" variant="outline" size="sm" disabled={exporting || filteredCases.length === 0}>
                     <Download className="h-4 w-4 mr-1" />
                     Export
                     <ChevronDown className="h-3 w-3 ml-1" />
@@ -601,7 +601,7 @@ export default function CasesPage() {
                 <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               </Button>
 
-              <Link href="/cases/new">
+              <Link href="/cases/new" data-tour="cases-new">
                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
                   <Plus className="h-4 w-4 mr-1" />
                   New Case
@@ -677,9 +677,9 @@ export default function CasesPage() {
             {/* Filters Section */}
             <div className="p-6 border-b border-slate-200">
               <h2 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-4">Search & Filters</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+              <div data-tour="cases-filters" className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
                 {/* Search */}
-                <div className="col-span-2">
+                <div data-tour="cases-search" className="col-span-2">
                   <Label className="text-xs text-slate-600">Search</Label>
                   <div className="relative mt-1">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -778,7 +778,7 @@ export default function CasesPage() {
                   )}
                 </div>
               ) : (
-                <table className="w-full text-sm">
+                <table data-tour="cases-table" className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50">
                       <th className="py-3 px-4 w-10">

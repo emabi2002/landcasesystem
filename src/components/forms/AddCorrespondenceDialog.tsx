@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LabelWithHelp } from '@/components/help';
 import { toast } from 'sonner';
 
 interface AddCorrespondenceDialogProps {
@@ -74,7 +75,13 @@ export function AddCorrespondenceDialog({ open, onOpenChange, onSuccess }: AddCo
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="reference_number">Reference Number *</Label>
+              <LabelWithHelp
+                htmlFor="reference_number"
+                helpTitle="Reference Number"
+                help="A unique reference for this incoming item, for example IC-2025-001. Use your registry's numbering so the document can be traced later."
+              >
+                Reference Number *
+              </LabelWithHelp>
               <Input
                 id="reference_number"
                 value={formData.reference_number}
@@ -85,7 +92,13 @@ export function AddCorrespondenceDialog({ open, onOpenChange, onSuccess }: AddCo
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="document_type">Document Type *</Label>
+              <LabelWithHelp
+                htmlFor="document_type"
+                helpTitle="Document Type"
+                help="What kind of document was received (Section 5 Notice, Court Order, Writ, etc.). Choosing the right type helps route and filter the item correctly."
+              >
+                Document Type *
+              </LabelWithHelp>
               <Select value={formData.document_type} onValueChange={(value) => handleChange('document_type', value)}>
                 <SelectTrigger id="document_type">
                   <SelectValue />
@@ -102,7 +115,13 @@ export function AddCorrespondenceDialog({ open, onOpenChange, onSuccess }: AddCo
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="source">Source *</Label>
+              <LabelWithHelp
+                htmlFor="source"
+                helpTitle="Source"
+                help="Who sent the document (Plaintiff, Solicitor General, Court, Ombudsman, etc.). Record the true sender so acknowledgements go to the right party."
+              >
+                Source *
+              </LabelWithHelp>
               <Select value={formData.source} onValueChange={(value) => handleChange('source', value)}>
                 <SelectTrigger id="source">
                   <SelectValue />
@@ -119,7 +138,13 @@ export function AddCorrespondenceDialog({ open, onOpenChange, onSuccess }: AddCo
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="received_date">Received Date *</Label>
+              <LabelWithHelp
+                htmlFor="received_date"
+                helpTitle="Received Date"
+                help="The date the document actually arrived at the office - not today's data-entry date. This starts any response or acknowledgement clock."
+              >
+                Received Date *
+              </LabelWithHelp>
               <Input
                 id="received_date"
                 type="date"

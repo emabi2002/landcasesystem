@@ -127,7 +127,7 @@ export function TopHeader({ sidebarCollapsed, onToggleSidebar, onMobileToggle }:
           </Button>
         )}
 
-        <div className="hidden md:block">
+        <div data-tour="app-search" className="hidden md:block">
           <GlobalSearch />
         </div>
       </div>

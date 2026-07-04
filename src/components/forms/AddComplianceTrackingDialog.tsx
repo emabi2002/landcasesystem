@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LabelWithHelp } from '@/components/help';
 import { toast } from 'sonner';
 
 interface AddComplianceTrackingDialogProps {
@@ -143,7 +144,13 @@ export function AddComplianceTrackingDialog({ open, onOpenChange, onSuccess }: A
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="court_order_description">Court Order Description *</Label>
+            <LabelWithHelp
+              htmlFor="court_order_description"
+              helpTitle="Court Order Description"
+              help="Describe exactly what the court has ordered the department to do. Be clear and specific - this is what the responsible division must comply with."
+            >
+              Court Order Description *
+            </LabelWithHelp>
             <Textarea
               id="court_order_description"
               value={formData.court_order_description}
@@ -156,7 +163,13 @@ export function AddComplianceTrackingDialog({ open, onOpenChange, onSuccess }: A
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="responsible_division">Responsible Division *</Label>
+              <LabelWithHelp
+                htmlFor="responsible_division"
+                helpTitle="Responsible Division"
+                help="The division that must carry out the order (Survey, Registrar for Titles, Valuation, etc.). Naming it makes clear who is accountable for compliance."
+              >
+                Responsible Division *
+              </LabelWithHelp>
               <Select value={formData.responsible_division} onValueChange={(value) => handleChange('responsible_division', value)}>
                 <SelectTrigger id="responsible_division">
                   <SelectValue />
@@ -174,7 +187,13 @@ export function AddComplianceTrackingDialog({ open, onOpenChange, onSuccess }: A
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="compliance_deadline">Compliance Deadline</Label>
+              <LabelWithHelp
+                htmlFor="compliance_deadline"
+                helpTitle="Compliance Deadline"
+                help="The date by which the order must be complied with. The system uses this to flag approaching and overdue compliance items in alerts."
+              >
+                Compliance Deadline
+              </LabelWithHelp>
               <Input
                 id="compliance_deadline"
                 type="date"
