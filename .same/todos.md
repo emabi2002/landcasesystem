@@ -125,3 +125,34 @@
 - Test the filing dialog with actual case documents
 - Verify document selection and upload functionality
 - Consider adding document preview functionality
+
+## Section 5 Notice Register — Build Todos
+
+## Core module (done)
+- [x] `database-section5-notices.sql` — table, indexes, trigger, documents link, module registration, RBAC, roles
+- [x] `src/lib/section5-notices.ts` — types, statuses, workflow transitions, claimant/doc types, stats, helpers
+- [x] `src/components/section5-notices/Section5StatsCards.tsx`
+- [x] `src/components/section5-notices/Section5NoticeDialog.tsx` (register/edit + assign lawyer + link case + workflow-enforced status)
+- [x] `src/components/section5-notices/Section5NoticeDocuments.tsx`
+- [x] `src/components/section5-notices/Section5NoticeTimeline.tsx`
+- [x] `src/components/section5-notices/Section5NoticeDetail.tsx` (tabs: details/documents/timeline)
+- [x] `src/components/section5-notices/CaseSection5Notices.tsx`
+- [x] `src/components/section5-notices/index.ts`
+- [x] `src/app/section5-notices/page.tsx` — dashboard + register + filters + sorting + export/print + reports
+
+## Integrations (done)
+- [x] Sidebar: added "Registry" group (Section 5 Notices + Search Warrants), defaultOpen
+- [x] Sidebar: merge saved state over defaults so new groups open for existing users (fixes hidden Search Warrants)
+- [x] Case details: added "Section 5 Notices" tab
+- [x] Help content: topic + tour + route mapping + fields/validation guidance
+- [x] Reports page + report-utils: Section 5 register (Excel/PDF/Print)
+
+## DB (live project yvnkyjnwvylrweyzvibs, via service role REST)
+- [x] Diagnosed: Search Warrants was permitted all along — hidden in collapsed "Legal" group
+- [x] Registered `section5_notices` module + permissions for 7 groups (menu now shows via RBAC)
+- [ ] TABLE `section5_notices` + `documents.section5_notice_id` column — needs DDL (service role can't).
+      Options: user pastes database-section5-notices.sql in SQL Editor, OR provides DB password / PAT.
+
+## Finish
+- [x] Lint (0 errors), tsc (0 errors), dev server restarted, routes 200
+- [ ] Version + suggestions

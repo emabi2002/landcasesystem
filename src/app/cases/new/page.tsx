@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { SelectWithAdd } from '@/components/ui/select-with-add';
 import { HelpTooltip } from '@/components/help';
+import { logAudit } from '@/lib/permissions';
 import { ArrowLeft, Save, X } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -90,6 +91,10 @@ export default function NewCasePage() {
       if (!result.case) throw new Error('No case data returned');
 
       toast.success('Case registered successfully');
+      await logAudit('create', 'cases', result.case.id, 'case', {
+        case_number: result.case.case_number,
+        title: formData.title,
+      });
       router.push(`/cases/${result.case.id}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to register case';

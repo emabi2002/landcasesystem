@@ -347,6 +347,87 @@ export async function generateSearchWarrantRegister(
   doc.save(`search-warrant-register-${timestamp}.pdf`);
 }
 
+// Section 5 Notice Register
+interface Section5Row {
+  date_received?: string | null;
+  file_opened_date?: string | null;
+  assigned_lawyer_date?: string | null;
+  dlpp_lawyer_id?: string | null;
+  solicitor_general_lawyer?: string | null;
+  claimant_lawyers?: string | null;
+  claimant_name?: string | null;
+  claimant_type?: string | null;
+  ilg_registration_number?: string | null;
+  land_description?: string | null;
+  land_file_reference?: string | null;
+  title_file_reference?: string | null;
+  province?: string | null;
+  district?: string | null;
+  notice_number?: string | null;
+  current_status?: string | null;
+  remarks?: string | null;
+}
+
+export async function generateSection5Register(
+  notices: unknown[],
+  format: 'excel' | 'pdf',
+) {
+  const timestamp = new Date().toISOString().split('T')[0];
+  const rows = notices as Section5Row[];
+
+  const reportData = rows.map((n, i) => ({
+    'No.': i + 1,
+    'Date Received': n.date_received || '',
+    'File Opened': n.file_opened_date || '',
+    'Date Assigned': n.assigned_lawyer_date || '',
+    'DLPP Lawyer': n.dlpp_lawyer_id || '',
+    'Solicitor General Lawyer': n.solicitor_general_lawyer || '',
+    'Claimant Lawyers': n.claimant_lawyers || '',
+    'Claimant Name': n.claimant_name || '',
+    'Claimant Type': n.claimant_type || '',
+    'ILG Registration Number': n.ilg_registration_number || '',
+    'Land Description': n.land_description || '',
+    'Land File Reference': n.land_file_reference || '',
+    'Title File Reference': n.title_file_reference || '',
+    Province: n.province || '',
+    District: n.district || '',
+    'Notice No.': n.notice_number || '',
+    Status: n.current_status || '',
+    Remarks: n.remarks || '',
+  }));
+
+  if (format === 'excel') {
+    exportToExcel(reportData, `section5-notice-register-${timestamp}.xlsx`, 'Section 5 Notice Register');
+    return;
+  }
+
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a3' });
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DLPP — Section 5 Notice Register', 40, 40);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(
+    `Generated ${formatDate(new Date(), 'PPpp')} · ${reportData.length} records · Department of Lands & Physical Planning`,
+    40,
+    56,
+  );
+
+  const columns = Object.keys(reportData[0] ?? { 'No.': '' });
+  autoTable(doc, {
+    startY: 70,
+    head: [columns],
+    body: reportData.map((r) => columns.map((c) => String((r as Record<string, unknown>)[c] ?? ''))),
+    theme: 'grid',
+    headStyles: { fillColor: [74, 66, 132], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    styles: { fontSize: 6, cellPadding: 2, overflow: 'linebreak' },
+    columnStyles: { 10: { cellWidth: 90 } },
+  });
+
+  doc.save(`section5-notice-register-${timestamp}.pdf`);
+}
+
 // Land Parcels Report
 export async function generateLandParcelsReport(parcels: unknown[], format: 'excel' | 'pdf') {
   const timestamp = new Date().toISOString().split('T')[0];

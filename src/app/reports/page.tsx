@@ -15,6 +15,7 @@ import {
   generateDocumentRegister,
   generateLandParcelsReport,
   generateSearchWarrantRegister,
+  generateSection5Register,
 } from '@/lib/report-utils';
 import { toast } from 'sonner';
 import {
@@ -27,6 +28,7 @@ import {
   Printer,
   AlertCircle,
   ShieldAlert,
+  FileWarning,
 } from 'lucide-react';
 import { format as formatDate } from 'date-fns';
 
@@ -72,6 +74,13 @@ const REPORT_TYPES = [
     description: 'Full warrant register with all official columns',
     icon: ShieldAlert,
     color: 'bg-violet-50 text-violet-600 border-violet-200',
+  },
+  {
+    id: 'section5-notices',
+    title: 'Section 5 Notice Register',
+    description: 'Full Section 5 Notice register with all official columns',
+    icon: FileWarning,
+    color: 'bg-teal-50 text-teal-600 border-teal-200',
   },
 ];
 
@@ -240,6 +249,34 @@ export default function ReportsPage() {
           } else {
             await generateSearchWarrantRegister(data || [], exportFormat);
             toast.success(`Search warrant register exported as ${exportFormat.toUpperCase()}`);
+          }
+          break;
+        }
+
+        case 'section5-notices': {
+          let query = supabase
+            .from('section5_notices')
+            .select('*')
+            .order('date_received', { ascending: false });
+
+          if (dateFrom) query = query.gte('date_received', dateFrom);
+          if (dateTo) query = query.lte('date_received', dateTo);
+
+          const { data, error } = await query;
+          if (error) {
+            if ((error as { message?: string }).message?.includes('does not exist') || (error as { code?: string }).code === '42P01') {
+              toast.error('Section 5 Notices table not found. Run database-section5-notices.sql in Supabase first.');
+              break;
+            }
+            throw error;
+          }
+
+          if (exportFormat === 'print') {
+            setPreviewData(data);
+            setTimeout(handlePrint, 500);
+          } else {
+            await generateSection5Register(data || [], exportFormat);
+            toast.success(`Section 5 Notice register exported as ${exportFormat.toUpperCase()}`);
           }
           break;
         }

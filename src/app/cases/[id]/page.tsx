@@ -69,6 +69,7 @@ import {
 import { WorkflowStepper, getWorkflowStepsFromStatus } from '@/components/dashboard/WorkflowStepper';
 import { CaseTimeline } from '@/components/cases/CaseTimeline';
 import { CaseSearchWarrants } from '@/components/search-warrants';
+import { CaseSection5Notices } from '@/components/section5-notices';
 
 /* ---------- Types (so nothing is `unknown`) ---------- */
 interface CaseData {
@@ -589,6 +590,7 @@ export default function CaseDetailPage() {
               Alerts ({alerts.length})
             </TabsTrigger>
             <TabsTrigger value="compliance" className="text-xs px-3">Compliance</TabsTrigger>
+            <TabsTrigger value="section5-notices" className="text-xs px-3">Section 5 Notices</TabsTrigger>
             <TabsTrigger value="search-warrants" className="text-xs px-3">Search Warrants</TabsTrigger>
             <TabsTrigger value="history" className="text-xs px-3">History</TabsTrigger>
           </TabsList>
@@ -1542,6 +1544,14 @@ export default function CaseDetailPage() {
 
           <TabsContent value="compliance">
             <LinkedRecommendations caseId={caseId} />
+          </TabsContent>
+
+          <TabsContent value="section5-notices">
+            <Card>
+              <CardContent className="pt-6">
+                <CaseSection5Notices caseId={caseId} />
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="search-warrants">

@@ -25,6 +25,7 @@ import {
   Lock,
   X,
   ShieldCheck,
+  User,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -73,12 +74,14 @@ export default function AuditTrailPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [userMap, setUserMap] = useState<Record<string, string>>({});
   const [moduleMap, setModuleMap] = useState<Record<string, string>>({});
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [query, setQuery] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
   const [moduleFilter, setModuleFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [myActivityOnly, setMyActivityOnly] = useState(false);
 
   useEffect(() => {
     init();
@@ -90,6 +93,7 @@ export default function AuditTrailPage() {
       router.push('/login');
       return;
     }
+    setCurrentUserId(user.id);
     const perms = await getModulePermissions('audit_trail');
     // Fallback: allow if module not configured (setup phase) — read-only anyway.
     const canRead = perms ? perms.can_read : true;
@@ -158,6 +162,7 @@ export default function AuditTrailPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return logs.filter((l) => {
+      if (myActivityOnly && l.user_id !== currentUserId) return false;
       if (actionFilter !== 'all' && l.action !== actionFilter) return false;
       if (moduleFilter !== 'all' && l.module_id !== moduleFilter) return false;
       const day = l.logged_at?.slice(0, 10);
@@ -177,13 +182,14 @@ export default function AuditTrailPage() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [logs, query, actionFilter, moduleFilter, dateFrom, dateTo, userMap, moduleMap]);
+  }, [logs, query, actionFilter, moduleFilter, dateFrom, dateTo, userMap, moduleMap, myActivityOnly, currentUserId]);
 
   const activeFilters =
     (actionFilter !== 'all' ? 1 : 0) +
     (moduleFilter !== 'all' ? 1 : 0) +
     (dateFrom ? 1 : 0) +
-    (dateTo ? 1 : 0);
+    (dateTo ? 1 : 0) +
+    (myActivityOnly ? 1 : 0);
 
   const exportExcel = () => {
     try {
@@ -241,6 +247,15 @@ export default function AuditTrailPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant={myActivityOnly ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setMyActivityOnly((v) => !v)}
+                className={myActivityOnly ? 'bg-dlpp-purple hover:bg-dlpp-purple-dark text-white' : ''}
+              >
+                <User className="mr-1 h-4 w-4" />
+                My activity
+              </Button>
               <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
                 <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               </Button>
@@ -343,6 +358,7 @@ export default function AuditTrailPage() {
                       setDateFrom('');
                       setDateTo('');
                       setQuery('');
+                      setMyActivityOnly(false);
                     }}
                   >
                     <X className="mr-1 h-3 w-3" />

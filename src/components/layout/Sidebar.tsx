@@ -37,6 +37,8 @@ import {
   LifeBuoy,
   ShieldAlert,
   History,
+  FileWarning,
+  Archive,
 } from 'lucide-react';
 
 interface NavItem {
@@ -115,6 +117,25 @@ const navigationGroups: NavGroup[] = [
     ],
   },
   {
+    name: 'Registry',
+    icon: Archive,
+    defaultOpen: true,
+    items: [
+      {
+        name: 'Section 5 Notices',
+        href: '/section5-notices',
+        icon: FileWarning,
+        moduleKey: 'section5_notices',
+      },
+      {
+        name: 'Search Warrants',
+        href: '/search-warrants',
+        icon: ShieldAlert,
+        moduleKey: 'search_warrants',
+      },
+    ],
+  },
+  {
     name: 'Case Management',
     icon: Briefcase,
     defaultOpen: false,
@@ -143,7 +164,6 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: 'Lawyers', href: '/lawyers', icon: Users, moduleKey: 'lawyers' },
       { name: 'Filings', href: '/filings', icon: FileText, moduleKey: 'filings' },
-      { name: 'Search Warrants', href: '/search-warrants', icon: ShieldAlert, moduleKey: 'search_warrants' },
     ],
   },
   {
@@ -209,20 +229,25 @@ export function Sidebar({
 
   // Initialize open groups from localStorage or defaults
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    // Start from each group's default (so NEW groups added in an update, like
+    // "Registry", open by default even for users who already have a saved state).
+    const initial: Record<string, boolean> = {};
+    navigationGroups.forEach((group) => {
+      initial[group.name] = group.defaultOpen ?? false;
+    });
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem(SIDEBAR_OPEN_GROUPS_KEY);
         if (stored) {
-          return JSON.parse(stored);
+          const parsed = JSON.parse(stored) as Record<string, boolean>;
+          // Merge saved state over defaults: existing groups keep the user's
+          // choice; groups not present in the saved state use their default.
+          return { ...initial, ...parsed };
         }
       } catch {
         // Ignore parse errors
       }
     }
-    const initial: Record<string, boolean> = {};
-    navigationGroups.forEach((group) => {
-      initial[group.name] = group.defaultOpen ?? false;
-    });
     return initial;
   });
 

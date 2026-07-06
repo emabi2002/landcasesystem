@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { logAudit } from '@/lib/permissions';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -229,6 +230,9 @@ export default function CasesPage() {
       setDeletingCaseId(caseId);
       const { error } = await supabase.from('cases').delete().eq('id', caseId);
       if (error) throw error;
+      await logAudit('delete', 'cases', caseId, 'case', {
+        case_number: cases.find(c => c.id === caseId)?.case_number,
+      });
       toast.success('Case deleted successfully');
       setCases(prev => prev.filter(c => c.id !== caseId));
       setSelectedIds(prev => {
@@ -248,8 +252,14 @@ export default function CasesPage() {
     if (selectedIds.size === 0) return;
     setBulkDeleting(true);
     try {
-      const { error } = await supabase.from('cases').delete().in('id', Array.from(selectedIds));
+      const idsToDelete = Array.from(selectedIds);
+      const { error } = await supabase.from('cases').delete().in('id', idsToDelete);
       if (error) throw error;
+      await logAudit('delete', 'cases', undefined, 'case', {
+        bulk: true,
+        count: idsToDelete.length,
+        ids: idsToDelete,
+      });
       toast.success(`${selectedIds.size} cases deleted successfully`);
       setCases(prev => prev.filter(c => !selectedIds.has(c.id)));
       setSelectedIds(new Set());

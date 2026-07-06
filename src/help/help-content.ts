@@ -970,6 +970,73 @@ export const HELP_TOPICS: HelpTopic[] = [
     tourId: 'search-warrants',
   },
 
+  {
+    id: 'section5-notices',
+    title: 'Section 5 Notice Register',
+    category: 'Case Workflow',
+    icon: 'FileWarning',
+    summary: 'Register and track official Section 5 Notices, from receipt to advice, case linking and closure.',
+    keywords: [
+      'section 5', 's5', 'notice', 'register', 'claim', 'ilg', 'incorporated land group',
+      'customary land', 'state lease', 'ownership', 'claimant', 'legal advice', 'intake',
+    ],
+    roles: ['Officer / Registry Clerk', 'Lawyer / Legal Officer', 'Manager', 'System Administrator'],
+    purpose:
+      'The Section 5 Notice Register records every official Section 5 Notice the Department receives — relating to land claims, Incorporated Land Groups (ILGs), customary land, State leases and ownership claims. It is a legal registry (not a plaintiff/defendant table). A notice moves through a fixed workflow and can create or link to a legal case, which may then progress to advice, mediation, litigation, a search warrant, court proceedings, appeals or settlement.',
+    whoShouldUse:
+      'Registry officers who receive and register notices, legal officers assigned to review them and issue advice, and managers who monitor the register.',
+    steps: [
+      'Open Registry → Section 5 Notices, or the Section 5 Notices tab inside a case.',
+      'Click "Register Notice" (or "Add Section 5 Notice" from within a case).',
+      'Enter the Section 5 Notice number, the date received and the claimant name and type.',
+      'If the claimant is an Incorporated Land Group, record the ILG name and registration number.',
+      'Capture the land description, file/title/survey references and the province, district, LLG and ward.',
+      'Assign the DLPP lawyer and record the file opened and assigned dates.',
+      'Describe the legal issue and write a short notice summary.',
+      'Set the status and save. Attach documents and follow the timeline from the notice’s detail view.',
+      'Link the notice to a case (existing or newly created) so its documents flow into the case file.',
+    ],
+    requiredFields: [
+      { name: 'Section 5 Notice No.', required: true, description: 'The official notice number — the main identifier for the register entry.' },
+      { name: 'Claimant Name', required: true, description: 'The person or entity making the claim.' },
+      { name: 'Claimant Type', required: false, description: 'Individual, Incorporated Land Group, Company, Government, Clan or Community.' },
+      { name: 'Date Received', required: false, description: 'The actual date the Department received the notice.' },
+      { name: 'ILG Registration Number', required: false, description: 'Required in practice when the claimant type is Incorporated Land Group.' },
+      { name: 'Status', required: true, description: 'Where the notice is in the workflow.' },
+      { name: 'Linked Case', required: false, description: 'The legal case the notice relates to (can be linked at any time).' },
+    ],
+    commonMistakes: [
+      'Treating the notice as a plaintiff or defendant — it is a registry entry, not a party.',
+      'Recording the entry date instead of the actual date the notice was received.',
+      'Choosing Incorporated Land Group but leaving the ILG name and registration number blank.',
+      'Skipping workflow steps — the status can only move to the next step (or Closed).',
+      'Not linking the notice to a case, so its documents do not appear in the case file.',
+    ],
+    bestPractices: [
+      'Register notices the day they arrive and assign a lawyer promptly.',
+      'Follow the workflow in order: Draft → Received → File Opened → Assigned to Lawyer → Legal Review → Awaiting Advice → Advice Issued → Matter Created → Referred to Court → Closed.',
+      'Link the notice to a case as soon as one exists so documents and history stay together.',
+      'Attach every relevant document (the notice, claim documents, ILG registration, survey plans, titles, correspondence, advice, maps, affidavits and court documents).',
+      'Keep the status current — it drives the dashboard counts and the register report.',
+    ],
+    afterSaving: [
+      'The notice appears in the Section 5 Notice Register and, when linked, on the case’s Section 5 Notices tab.',
+      'Documents you attach are also linked to the case and show in the case document list.',
+      'Creation, status changes, lawyer assignment, case linking and document uploads are all written to the audit trail and shown on the notice’s Timeline.',
+      'Dashboard counts (pending assignment, under review, awaiting advice, linked to cases, closed) update automatically.',
+    ],
+    roleNotes: {
+      'Officer / Registry Clerk':
+        'You usually register the notice and attach the scanned copy, then it is assigned to a lawyer.',
+      'Lawyer / Legal Officer':
+        'You review the notice, issue advice, and — where needed — create the matter and refer it to court.',
+      'System Administrator':
+        'Only Admin and Manager roles can delete a notice. Everyone else can create, update and upload as their role allows.',
+    },
+    related: ['case-details', 'upload-documents', 'search-warrants', 'reports'],
+    tourId: 'section5-notices',
+  },
+
   /* ---------------------------- COMPLIANCE & CLOSURE --------------- */
   {
     id: 'compliance-recommendations',
@@ -1632,6 +1699,38 @@ export const HELP_TOURS: HelpTour[] = [
     ],
   },
   {
+    id: 'section5-notices',
+    title: 'Section 5 Notice Register Tour',
+    topicId: 'section5-notices',
+    steps: [
+      {
+        title: 'Section 5 Notice Register',
+        description:
+          'This register holds official Section 5 Notices received by the Department and links them to cases. A notice is a registry entry — not a plaintiff or defendant.',
+      },
+      {
+        title: 'Register a Notice',
+        description:
+          'Use "Register Notice" to add the notice number, date received, claimant name and type. For an ILG, record the ILG name and registration number.',
+      },
+      {
+        title: 'Follow the Workflow',
+        description:
+          'A notice moves in order: Draft → Received → File Opened → Assigned to Lawyer → Legal Review → Awaiting Advice → Advice Issued → Matter Created → Referred to Court → Closed. The status can only move to the next step, or straight to Closed.',
+      },
+      {
+        title: 'Assign, Link and Attach',
+        description:
+          'Assign the DLPP lawyer, link the notice to an existing or new case, and attach the notice, claim documents, ILG registration, surveys, titles and correspondence from the notice’s detail view.',
+      },
+      {
+        title: 'Dashboard, Timeline and Reports',
+        description:
+          'Watch the dashboard cards, follow each notice’s Timeline and audit trail, and export the full register or the analytical reports (by month, province, lawyer, ILG, status, linked, outstanding and closed).',
+      },
+    ],
+  },
+  {
     id: 'compliance-recommendations',
     title: 'Compliance Tour',
     topicId: 'compliance-recommendations',
@@ -1780,6 +1879,7 @@ const ROUTE_RULES: { pattern: RegExp; topicId: string }[] = [
   { pattern: /^\/communications/, topicId: 'parties-lawyers' },
   { pattern: /^\/lawyers/, topicId: 'parties-lawyers' },
   { pattern: /^\/filings/, topicId: 'external-filings' },
+  { pattern: /^\/section5-notices/, topicId: 'section5-notices' },
   { pattern: /^\/search-warrants/, topicId: 'search-warrants' },
   { pattern: /^\/litigation-costs/, topicId: 'reports' },
   { pattern: /^\/file-requests/, topicId: 'create-files' },
