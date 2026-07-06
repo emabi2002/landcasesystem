@@ -94,4 +94,23 @@ WHERE NOT EXISTS (
   WHERE x.group_id = g.group_id AND x.module_id = m.id
 );
 
+-- 8. Auditor group -----------------------------------------------------------
+--    A read-only oversight role. It can view (and export) the search warrant
+--    register, linked cases and reports. All actions are captured in audit_logs.
+INSERT INTO public.groups (group_name, description)
+SELECT 'Auditor', 'Read-only oversight role with access to the search warrant register and audit trail'
+WHERE NOT EXISTS (SELECT 1 FROM public.groups WHERE group_name = 'Auditor');
+
+WITH a AS (SELECT id FROM public.groups WHERE group_name = 'Auditor')
+INSERT INTO public.group_module_permissions
+  (group_id, module_id, can_create, can_read, can_update, can_delete, can_print, can_approve, can_export)
+SELECT a.id, m.id, false, true, false, false, true, false, true
+FROM a, public.modules m
+WHERE m.module_key IN ('search_warrants', 'cases', 'reports')
+  AND NOT EXISTS (
+    SELECT 1 FROM public.group_module_permissions x
+    WHERE x.group_id = a.id AND x.module_id = m.id
+  );
+
 -- Done. Reload the app and sign in again to pick up the new menu + permissions.
+-- Assign users to the "Auditor" group from Admin -> User Management as needed.

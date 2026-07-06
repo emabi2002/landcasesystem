@@ -14,6 +14,7 @@ import {
   generateTaskReport,
   generateDocumentRegister,
   generateLandParcelsReport,
+  generateSearchWarrantRegister,
 } from '@/lib/report-utils';
 import { toast } from 'sonner';
 import {
@@ -25,6 +26,7 @@ import {
   CheckSquare,
   Printer,
   AlertCircle,
+  ShieldAlert,
 } from 'lucide-react';
 import { format as formatDate } from 'date-fns';
 
@@ -63,6 +65,13 @@ const REPORT_TYPES = [
     description: 'Land parcels and associated cases',
     icon: MapPin,
     color: 'bg-red-50 text-red-600 border-red-200',
+  },
+  {
+    id: 'search-warrants',
+    title: 'Search Warrant Register',
+    description: 'Full warrant register with all official columns',
+    icon: ShieldAlert,
+    color: 'bg-violet-50 text-violet-600 border-violet-200',
   },
 ];
 
@@ -203,6 +212,34 @@ export default function ReportsPage() {
           } else {
             await generateLandParcelsReport(parcelsWithCaseNumber || [], exportFormat);
             toast.success(`Land parcels report exported as ${exportFormat.toUpperCase()}`);
+          }
+          break;
+        }
+
+        case 'search-warrants': {
+          let query = supabase
+            .from('search_warrants')
+            .select('*')
+            .order('date_received', { ascending: false });
+
+          if (dateFrom) query = query.gte('date_received', dateFrom);
+          if (dateTo) query = query.lte('date_received', dateTo);
+
+          const { data, error } = await query;
+          if (error) {
+            if ((error as { message?: string }).message?.includes('does not exist') || (error as { code?: string }).code === '42P01') {
+              toast.error('Search warrants table not found. Run database-search-warrants.sql in Supabase first.');
+              break;
+            }
+            throw error;
+          }
+
+          if (exportFormat === 'print') {
+            setPreviewData(data);
+            setTimeout(handlePrint, 500);
+          } else {
+            await generateSearchWarrantRegister(data || [], exportFormat);
+            toast.success(`Search warrant register exported as ${exportFormat.toUpperCase()}`);
           }
           break;
         }
