@@ -36,6 +36,7 @@ import {
   Download,
   LifeBuoy,
   ShieldAlert,
+  History,
 } from 'lucide-react';
 
 interface NavItem {
@@ -168,6 +169,7 @@ const navigationGroups: NavGroup[] = [
     defaultOpen: false,
     items: [
       { name: 'Admin Panel', href: '/admin', icon: Settings, moduleKey: 'admin' },
+      { name: 'Audit Trail', href: '/audit', icon: History, moduleKey: 'audit_trail' },
       { name: 'Master Files', href: '/admin/master-files', icon: Database, moduleKey: 'master_files' },
       { name: 'Internal Officers', href: '/admin/internal-officers', icon: UserCheck, moduleKey: 'internal_officers' },
       { name: 'User Management', href: '/admin/users', icon: UserCog, moduleKey: 'users' },

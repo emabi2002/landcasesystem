@@ -1,8 +1,9 @@
 'use client';
 /* eslint-disable react-hooks/exhaustive-deps */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useReactToPrint } from 'react-to-print';
 import { supabase } from '@/lib/supabase';
 import { getModulePermissions, logAudit } from '@/lib/permissions';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -44,6 +45,7 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Printer,
   AlertCircle,
   X,
 } from 'lucide-react';
@@ -94,6 +96,13 @@ export default function SearchWarrantsPage() {
   const [editing, setEditing] = useState<SearchWarrant | null>(null);
   const [detail, setDetail] = useState<SearchWarrant | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SearchWarrant | null>(null);
+
+  // Print
+  const printRef = useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Search Warrant Register ${new Date().toISOString().split('T')[0]}`,
+  });
 
   useEffect(() => {
     checkAuth();
@@ -348,6 +357,12 @@ export default function SearchWarrantsPage() {
                       <FileText className="mr-2 h-4 w-4 text-red-600" />
                       Export to PDF
                     </DropdownMenuItem>
+                    {perms.can_print && (
+                      <DropdownMenuItem onClick={() => handlePrint?.()}>
+                        <Printer className="mr-2 h-4 w-4 text-slate-600" />
+                        Print
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
@@ -607,6 +622,64 @@ export default function SearchWarrantsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Hidden printable register */}
+      <div style={{ display: 'none' }}>
+        <div ref={printRef} className="p-6">
+          <style>{`@page { size: A3 landscape; margin: 12mm; }`}</style>
+          <div style={{ marginBottom: 12 }}>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#4A4284', margin: 0 }}>
+              DLPP — Search Warrant Register
+            </h1>
+            <p style={{ fontSize: 11, color: '#475569', margin: '2px 0 0' }}>
+              Department of Lands &amp; Physical Planning · Generated{' '}
+              {format(new Date(), 'dd MMM yyyy HH:mm')} · {filtered.length} records
+            </p>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9 }}>
+            <thead>
+              <tr style={{ background: '#4A4284', color: '#fff' }}>
+                {[
+                  'No.',
+                  'Date Received',
+                  'Warrant No.',
+                  'CR No.',
+                  'Received From',
+                  'DLPP Lawyer',
+                  'Applicant/Informant',
+                  'Respondent',
+                  'Land Description',
+                  'Legal Issue',
+                  'Status',
+                  'Remarks',
+                ].map((h) => (
+                  <th key={h} style={{ border: '1px solid #cbd5e1', padding: '4px 6px', textAlign: 'left' }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((w, i) => (
+                <tr key={w.id} style={{ background: i % 2 ? '#f5f7fa' : '#fff' }}>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px' }}>{i + 1}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px' }}>{fmt(w.date_received)}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px' }}>{w.warrant_number || ''}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px' }}>{w.crime_report_number || ''}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px' }}>{w.received_from || ''}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px' }}>{w.dlpp_lawyer_in_carriage || ''}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px' }}>{w.applicant_informant || ''}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px' }}>{w.respondent || ''}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px' }}>{w.land_description || ''}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px' }}>{w.legal_issue || ''}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px' }}>{w.status || ''}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px' }}>{w.remarks_comments || ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </AppLayout>
   );
 }

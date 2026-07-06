@@ -1768,6 +1768,7 @@ const ROUTE_RULES: { pattern: RegExp; topicId: string }[] = [
   { pattern: /^\/admin\/groups/, topicId: 'user-role-management' },
   { pattern: /^\/admin\/modules/, topicId: 'user-role-management' },
   { pattern: /^\/admin/, topicId: 'user-role-management' },
+  { pattern: /^\/audit/, topicId: 'audit-trail' },
   { pattern: /^\/calendar/, topicId: 'schedule-events' },
   { pattern: /^\/documents/, topicId: 'upload-documents' },
   { pattern: /^\/tasks/, topicId: 'create-tasks' },

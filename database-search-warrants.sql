@@ -112,5 +112,31 @@ WHERE m.module_key IN ('search_warrants', 'cases', 'reports')
     WHERE x.group_id = a.id AND x.module_id = m.id
   );
 
+-- 9. Audit Trail module ------------------------------------------------------
+--    A read-only viewer over the existing audit_logs table (populated by the
+--    app's logAudit()). Granted to Super Admin (full), Manager and Auditor
+--    (read/print/export).
+INSERT INTO public.modules
+  (module_name, module_key, description, icon, route, display_order, is_active, category, system)
+SELECT 'Audit Trail', 'audit_trail',
+       'Read-only record of who did what and when across the system',
+       'History', '/audit', 5, true, 'legal', 'landcase'
+WHERE NOT EXISTS (SELECT 1 FROM public.modules WHERE module_key = 'audit_trail');
+
+WITH m AS (SELECT id FROM public.modules WHERE module_key = 'audit_trail')
+INSERT INTO public.group_module_permissions
+  (group_id, module_id, can_create, can_read, can_update, can_delete, can_print, can_approve, can_export)
+SELECT g.group_id, m.id, g.c, g.r, g.u, g.d, g.p, g.a, g.e
+FROM m, (VALUES
+  ('58581d49-b63c-47b8-b552-1651ad1acc88'::uuid, true,  true, true,  true,  true, true,  true),  -- Super Admin
+  ('535686da-20a2-458b-a5a6-e7b39de40728'::uuid, false, true, false, false, true, false, true),  -- Manager
+  ((SELECT id FROM public.groups WHERE group_name = 'Auditor'), false, true, false, false, true, false, true)  -- Auditor
+) AS g(group_id, c, r, u, d, p, a, e)
+WHERE g.group_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM public.group_module_permissions x
+    WHERE x.group_id = g.group_id AND x.module_id = m.id
+  );
+
 -- Done. Reload the app and sign in again to pick up the new menu + permissions.
 -- Assign users to the "Auditor" group from Admin -> User Management as needed.
