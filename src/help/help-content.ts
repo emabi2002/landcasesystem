@@ -1037,6 +1037,71 @@ export const HELP_TOPICS: HelpTopic[] = [
     tourId: 'section5-notices',
   },
 
+  {
+    id: 'section-160',
+    title: 'Section 160(2) Application Register',
+    category: 'Case Workflow',
+    icon: 'Landmark',
+    summary: 'Register and track Section 160(2) applications under the Land Registration Act 1981.',
+    keywords: [
+      'section 160', '160(2)', 'land registration act', 'registrar of titles', 'title dispute',
+      'summons', 'fraud', 'consent', 'rectification', 'court file', 'defendant', 'application',
+    ],
+    roles: ['Officer / Registry Clerk', 'Lawyer / Legal Officer', 'Manager', 'System Administrator'],
+    purpose:
+      'The Section 160(2) Application Register records applications under the Land Registration Act 1981 — matters involving title disputes, the Registrar of Titles, summons, fraud allegations, consent issues, title rectification and court-related land registration matters. It is a legal registry (not a plaintiff/defendant table). An application can create a new legal case or be linked to an existing one.',
+    whoShouldUse:
+      'Registry officers who receive applications, legal officers assigned to act on them, and managers who monitor the register.',
+    steps: [
+      'Open Registry → Section 160(2) Applications, or the Section 160(2) tab inside a case.',
+      'Click "Register Application" (or "Add Application" from within a case).',
+      'Enter the application year and date received, the applicant (usually Registrar of Titles) and the defendant.',
+      'Assign the DLPP lawyer in carriage (choose a system user so they are alerted) and record any Solicitor General, private firm or defendant’s lawyer.',
+      'Capture the land description, title file reference, summons dates, consignment note, grounds for the application and court file reference.',
+      'Set the status of the matter and save. Attach documents and follow the timeline from the application’s detail view.',
+      'Link the application to a case (existing or new) so its documents flow into the case file.',
+    ],
+    requiredFields: [
+      { name: 'Defendant', required: true, description: 'The defendant / respondent — a key identifier and search field.' },
+      { name: 'Application Year', required: false, description: 'Auto-filled from the date received; can be overridden.' },
+      { name: 'Date Received', required: false, description: 'The actual date the application was received.' },
+      { name: 'Applicant — Registrar of Titles', required: false, description: 'The applicant, usually the Registrar of Titles.' },
+      { name: 'Title File Reference', required: false, description: 'The Registrar of Titles file reference for the relevant title.' },
+      { name: 'Status of the Matter', required: true, description: 'Where the matter currently stands.' },
+      { name: 'Linked Case', required: false, description: 'The legal case the application relates to (can be linked at any time).' },
+    ],
+    commonMistakes: [
+      'Treating the application as a plaintiff or defendant record — it is a registry entry.',
+      'Recording the entry date instead of the date the application was actually received.',
+      'Leaving the defendant blank, which makes the entry hard to find.',
+      'Not recording the court file reference once the matter is before the court.',
+      'Not linking the application to a case, so its documents do not appear in the case file.',
+    ],
+    bestPractices: [
+      'Register applications promptly and assign a DLPP lawyer with a linked user account so alerts are received.',
+      'Keep the status current — it drives the dashboard counts (pending review, awaiting summons, in court, director response, closed, rejected).',
+      'Record summons dates and the consignment note as soon as they are known.',
+      'Attach every relevant document (the application, letter of summons, consignment note, court documents, registrar correspondence, title extracts, legal opinion, director response and court orders).',
+      'Link the application to a case so documents and history stay together.',
+    ],
+    afterSaving: [
+      'The application appears in the Section 160(2) Register and, when linked, on the case’s Section 160(2) tab.',
+      'Documents you attach are also linked to the case and show in the case document list.',
+      'Creation, lawyer assignment, status changes, court file updates, case linking and document uploads are written to the audit trail and shown on the Timeline.',
+      'The assigned lawyer is alerted when the application is assigned to them and when its status changes.',
+    ],
+    roleNotes: {
+      'Officer / Registry Clerk':
+        'You usually register the application and attach the scanned documents, then it is assigned to a lawyer.',
+      'Lawyer / Legal Officer':
+        'You act on the application — respond to summons, prepare legal responses and director responses, and progress it through court.',
+      'System Administrator':
+        'Only Admin and Manager roles can delete an application. Everyone else can create, update and upload as their role allows.',
+    },
+    related: ['case-details', 'upload-documents', 'section5-notices', 'search-warrants', 'reports'],
+    tourId: 'section-160',
+  },
+
   /* ---------------------------- COMPLIANCE & CLOSURE --------------- */
   {
     id: 'compliance-recommendations',
@@ -1731,6 +1796,38 @@ export const HELP_TOURS: HelpTour[] = [
     ],
   },
   {
+    id: 'section-160',
+    title: 'Section 160(2) Application Register Tour',
+    topicId: 'section-160',
+    steps: [
+      {
+        title: 'Section 160(2) Application Register',
+        description:
+          'This register records applications under the Land Registration Act 1981 — title disputes, Registrar of Titles matters, summons, fraud, consent and rectification — and links them to cases.',
+      },
+      {
+        title: 'Register an Application',
+        description:
+          'Use "Register Application" to add the year, date received, applicant (Registrar of Titles), defendant, land and title references, summons dates, grounds and court file reference.',
+      },
+      {
+        title: 'Assign a Lawyer & Set Status',
+        description:
+          'Assign the DLPP lawyer in carriage (choose a system user to enable alerts) and set the status of the matter. Both are recorded in the audit trail.',
+      },
+      {
+        title: 'Link, Attach and Track',
+        description:
+          'Link the application to an existing or new case, attach the application, summons, consignment note, court documents and legal opinions, and follow the Timeline.',
+      },
+      {
+        title: 'Dashboard and Reports',
+        description:
+          'Watch the dashboard cards and export the full register or the analytical reports (by year, lawyer, status, land, title file, court file, outstanding and closed).',
+      },
+    ],
+  },
+  {
     id: 'compliance-recommendations',
     title: 'Compliance Tour',
     topicId: 'compliance-recommendations',
@@ -1880,6 +1977,7 @@ const ROUTE_RULES: { pattern: RegExp; topicId: string }[] = [
   { pattern: /^\/lawyers/, topicId: 'parties-lawyers' },
   { pattern: /^\/filings/, topicId: 'external-filings' },
   { pattern: /^\/section5-notices/, topicId: 'section5-notices' },
+  { pattern: /^\/section-160/, topicId: 'section-160' },
   { pattern: /^\/search-warrants/, topicId: 'search-warrants' },
   { pattern: /^\/litigation-costs/, topicId: 'reports' },
   { pattern: /^\/file-requests/, topicId: 'create-files' },

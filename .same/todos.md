@@ -155,4 +155,27 @@
 
 ## Finish
 - [x] Lint (0 errors), tsc (0 errors), dev server restarted, routes 200
-- [ ] Version + suggestions
+- [x] Version + suggestions
+
+## Follow-up tasks (done)
+- [x] Dashboard: added Section 5 Notices summary card (DashboardOverview, hideIfMissing)
+- [x] GitHub: committed + pushed to emabi2002/landcasesystem main (commit a5c6c47)
+- [x] Notifications: DLPP Lawyer is now a user picker (dlpp_lawyer_user_id, added to migration);
+      assigned lawyer alerted on assignment and on status change via the notifications table
+      (src/lib/section5-notifications.ts, wired in Section5NoticeDialog)
+
+## Section 160(2) Applications module (done)
+- [x] database-section-160.sql (table section_160_applications, indexes, trigger, documents link, module + RBAC)
+- [x] src/lib/section-160.ts (types, statuses, doc types, stats, helpers, form)
+- [x] src/lib/section-160-notifications.ts
+- [x] components/section-160: StatsCards, Dialog, Documents, Timeline, Detail, CaseSection160, index
+- [x] src/app/section-160/page.tsx (dashboard + register + filters + sort + export/print + reports)
+- [x] Sidebar: added to Registry group
+- [x] Case details: added "Section 160(2)" tab
+- [x] Dashboard: added Section 160(2) summary card
+- [x] Help content: topic + tour + route mapping
+- [x] Reports page + report-utils: Section 160 register (Excel/PDF/Print)
+- [x] REST: registered section_160 module + permissions (admin can_read=true)
+- [x] tsc 0 errors, routes 200
+- [ ] Table section_160_applications still needs DDL (run database-section-160.sql)
+- [ ] Version, commit + push to GitHub

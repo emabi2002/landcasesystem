@@ -428,6 +428,87 @@ export async function generateSection5Register(
   doc.save(`section5-notice-register-${timestamp}.pdf`);
 }
 
+// Section 160(2) Application Register
+interface Section160Row {
+  date_received?: string | null;
+  date_assigned_to_legal_officer?: string | null;
+  dlpp_lawyer_in_carriage?: string | null;
+  solicitor_general_lawyer?: string | null;
+  private_law_firm?: string | null;
+  defendants_lawyer?: string | null;
+  applicant_registrar_of_titles?: string | null;
+  defendant?: string | null;
+  land_description?: string | null;
+  title_file_reference?: string | null;
+  letter_of_summons_date?: string | null;
+  summons_date?: string | null;
+  consignment_note?: string | null;
+  grounds_for_application?: string | null;
+  court_file_reference_no?: string | null;
+  status_of_matter?: string | null;
+  comments_remarks?: string | null;
+}
+
+export async function generateSection160Register(
+  applications: unknown[],
+  format: 'excel' | 'pdf',
+) {
+  const timestamp = new Date().toISOString().split('T')[0];
+  const rows = applications as Section160Row[];
+
+  const reportData = rows.map((a, i) => ({
+    'No.': i + 1,
+    'Date Received': a.date_received || '',
+    'Date Assigned to Legal Officer': a.date_assigned_to_legal_officer || '',
+    'DLPP Lawyer in Carriage': a.dlpp_lawyer_in_carriage || '',
+    'Solicitor General Lawyer': a.solicitor_general_lawyer || '',
+    'Private Law Firm': a.private_law_firm || '',
+    "Defendant's Lawyer": a.defendants_lawyer || '',
+    'Applicant - Registrar of Titles': a.applicant_registrar_of_titles || '',
+    Defendant: a.defendant || '',
+    'Land Description': a.land_description || '',
+    'Title File Reference': a.title_file_reference || '',
+    'Date of Letter': a.letter_of_summons_date || '',
+    'Date Summons Was Received': a.summons_date || '',
+    'Consignment Note': a.consignment_note || '',
+    'Grounds for the Application': a.grounds_for_application || '',
+    'Court File Reference No.': a.court_file_reference_no || '',
+    'Status of the Matter': a.status_of_matter || '',
+    'Comments / Remarks': a.comments_remarks || '',
+  }));
+
+  if (format === 'excel') {
+    exportToExcel(reportData, `section-160-register-${timestamp}.xlsx`, 'Section 160(2) Register');
+    return;
+  }
+
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a3' });
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DLPP — Section 160(2) Application Register', 40, 40);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(
+    `Generated ${formatDate(new Date(), 'PPpp')} · ${reportData.length} records · Department of Lands & Physical Planning`,
+    40,
+    56,
+  );
+
+  const columns = Object.keys(reportData[0] ?? { 'No.': '' });
+  autoTable(doc, {
+    startY: 70,
+    head: [columns],
+    body: reportData.map((r) => columns.map((c) => String((r as Record<string, unknown>)[c] ?? ''))),
+    theme: 'grid',
+    headStyles: { fillColor: [74, 66, 132], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    styles: { fontSize: 6, cellPadding: 2, overflow: 'linebreak' },
+    columnStyles: { 9: { cellWidth: 90 }, 14: { cellWidth: 100 } },
+  });
+
+  doc.save(`section-160-register-${timestamp}.pdf`);
+}
+
 // Land Parcels Report
 export async function generateLandParcelsReport(parcels: unknown[], format: 'excel' | 'pdf') {
   const timestamp = new Date().toISOString().split('T')[0];

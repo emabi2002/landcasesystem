@@ -39,6 +39,7 @@ import {
   History,
   FileWarning,
   Archive,
+  Landmark,
 } from 'lucide-react';
 
 interface NavItem {
@@ -126,6 +127,12 @@ const navigationGroups: NavGroup[] = [
         href: '/section5-notices',
         icon: FileWarning,
         moduleKey: 'section5_notices',
+      },
+      {
+        name: 'Section 160(2) Applications',
+        href: '/section-160',
+        icon: Landmark,
+        moduleKey: 'section_160',
       },
       {
         name: 'Search Warrants',

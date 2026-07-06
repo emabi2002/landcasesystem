@@ -12,6 +12,7 @@ import { AlertsNotificationCard } from './AlertsNotificationCard';
 import { useDashboardStats } from './useDashboardStats';
 import { SearchWarrantStatsCards } from '@/components/search-warrants';
 import { Section5StatsCards } from '@/components/section5-notices';
+import { Section160StatsCards } from '@/components/section-160';
 
 export function DashboardOverview() {
   const { stats, loading, pendingAlerts } = useDashboardStats();
@@ -66,6 +67,7 @@ export function DashboardOverview() {
 
       {/* Registry overviews (hidden until each module's table is set up) */}
       <Section5StatsCards hideIfMissing title="Section 5 Notices" />
+      <Section160StatsCards hideIfMissing title="Section 160(2) Applications" />
       <SearchWarrantStatsCards hideIfMissing title="Search Warrants" />
 
       {/* Charts Row 1: Monthly Trend & Status Distribution */}
