@@ -1,6 +1,20 @@
 # Land Case System - Todos
 
-## Help enhancements + GitHub deploy (current)
+## Search Warrants Module (current)
+
+- [x] Study patterns (directions page, RBAC, DocumentUpload, dashboard cards, reports)
+- [x] Inspect live DB (documents/modules/groups columns, cases module category/system)
+- [~] DB migration — MCP is on a different org; using SQL file + SQL Editor workflow
+- [ ] Create `database-search-warrants.sql`
+- [ ] Add TypeScript types to `supabase.ts`
+- [ ] Create `src/lib/search-warrants.ts`
+- [ ] `SearchWarrantStatsCards`, `SearchWarrantDialog`, `SearchWarrantDocuments`, `SearchWarrantDetail`, `CaseSearchWarrants`
+- [ ] `/search-warrants` page (list, search, filters, CRUD, export, RBAC)
+- [ ] Case Details tab + Dashboard cards + Sidebar item
+- [ ] Help content topic + tour + audit trail
+- [ ] tsc clean, version, guide user to run SQL
+
+## Help enhancements + GitHub deploy (done)
 
 - [x] Add `LabelWithHelp` reusable component
 - [x] Add HelpTooltips to Reception (Correspondence) dialog
@@ -12,8 +26,9 @@
 - [x] Add `data-tour` anchors to Case Details (header, edit, workflow, stage, tabs)
 - [x] Update case-details tour to highlight real elements
 - [x] tsc clean, all routes 200
-- [ ] Version snapshot
-- [ ] Commit + push to GitHub (emabi2002/landcasesystem)
+- [x] Version snapshot (v5)
+- [x] Repaired broken local git (reattached to origin/main)
+- [x] Commit + push to GitHub (emabi2002/landcasesystem) — f22fe88
 
 ## Connect Supabase (done)
 

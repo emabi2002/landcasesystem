@@ -908,6 +908,68 @@ export const HELP_TOPICS: HelpTopic[] = [
     related: ['upload-documents', 'officer-actions', 'court-references', 'compliance-recommendations'],
   },
 
+  {
+    id: 'search-warrants',
+    title: 'Search Warrants',
+    category: 'Case Workflow',
+    icon: 'ShieldAlert',
+    summary: 'Register and track official search warrants / investigation records linked to cases.',
+    keywords: [
+      'search warrant', 'warrant', 'investigation', 'police', 'crime report', 'cr number',
+      'witness statement', 'return of warrant', 'respondent', 'informant', 'register',
+    ],
+    roles: ['Lawyer / Legal Officer', 'Officer / Registry Clerk', 'Manager', 'System Administrator'],
+    purpose:
+      'The Search Warrants register records official, court-authorised search warrants received by DLPP — usually from the police — and tracks the documents DLPP must provide and the witness statements required. A warrant is an investigation record; it is not a plaintiff or defendant. It is normally linked to the legal case it relates to.',
+    whoShouldUse:
+      'Registry officers who receive warrants, legal officers assigned to handle them, and managers who monitor them.',
+    steps: [
+      'Open Search Warrants from the Legal menu, or the Search Warrants tab inside a case.',
+      'Click "Register Warrant" (or "Add Search Warrant" from within a case).',
+      'Enter the search warrant number and, where known, the Crime Report (CR) number.',
+      'Link the warrant to the related case (this is automatic when adding from inside a case).',
+      'Record who it was received from, the police officer and their contact details, and the date received.',
+      'Assign the DLPP lawyer in carriage and record the applicant/informant and respondent.',
+      'Capture the land description, legal issue, land and title file references, documents to provide and witness statement status.',
+      'Set the status and save. Attach scanned documents from the warrant\'s detail view.',
+    ],
+    requiredFields: [
+      { name: 'Search Warrant No.', required: true, description: 'The official warrant number — the main identifier.' },
+      { name: 'Crime Report (CR) No.', required: false, description: 'The police CR number the warrant relates to.' },
+      { name: 'Linked Case', required: false, description: 'The legal case the warrant relates to (recommended).' },
+      { name: 'Respondent', required: false, description: 'Who the warrant is directed at (e.g., Registrar of Titles).' },
+      { name: 'Status of Matter', required: true, description: 'Where the warrant is in the workflow.' },
+    ],
+    commonMistakes: [
+      'Treating the warrant as a plaintiff or defendant — it is an investigation record, not a party.',
+      'Recording the entry date instead of the actual date the warrant was received.',
+      'Not linking the warrant to a case, so its documents do not appear in the case file.',
+      'Forgetting to attach the scanned warrant and the return of warrant.',
+    ],
+    bestPractices: [
+      'Register warrants the day they arrive and assign a lawyer promptly.',
+      'Always link the warrant to the case so documents flow into the case file.',
+      'Keep the status current — it drives the dashboard counts and the register report.',
+      'Attach every relevant document (warrant, affidavit, police request, file documents, witness statement, return of warrant).',
+    ],
+    afterSaving: [
+      'The warrant appears in the Search Warrants register and on the linked case\'s Search Warrants tab.',
+      'Documents you attach are also linked to the case and show in the case document list.',
+      'Create, update, status change, lawyer assignment and document upload are all written to the audit trail.',
+      'Dashboard counts (open, urgent, awaiting witness, pending documents) update automatically.',
+    ],
+    roleNotes: {
+      'Officer / Registry Clerk':
+        'You usually register the warrant and attach the scanned copy, then it is assigned to a lawyer.',
+      'Lawyer / Legal Officer':
+        'You handle the warrant — gather the requested documents, arrange witness statements and prepare the return of warrant.',
+      'System Administrator':
+        'Only Admin and Manager roles can delete a warrant. Everyone else can create, update and upload as their role allows.',
+    },
+    related: ['case-details', 'upload-documents', 'external-filings', 'reports'],
+    tourId: 'search-warrants',
+  },
+
   /* ---------------------------- COMPLIANCE & CLOSURE --------------- */
   {
     id: 'compliance-recommendations',
@@ -1538,6 +1600,38 @@ export const HELP_TOURS: HelpTour[] = [
     ],
   },
   {
+    id: 'search-warrants',
+    title: 'Search Warrants Tour',
+    topicId: 'search-warrants',
+    steps: [
+      {
+        title: 'Search Warrants Register',
+        description:
+          'This register holds official search warrants received by DLPP and links them to cases. A warrant is an investigation record — not a plaintiff or defendant.',
+      },
+      {
+        title: 'Register a Warrant',
+        description:
+          'Use "Register Warrant" to add the warrant number, CR number, police details, respondent and the documents to provide.',
+      },
+      {
+        title: 'Link to a Case',
+        description:
+          'Link each warrant to its case. You can also add warrants from the Search Warrants tab inside a case, where the case is filled in automatically.',
+      },
+      {
+        title: 'Attach Documents',
+        description:
+          'Open a warrant to attach the scanned warrant, affidavit, file documents, witness statement and return of warrant. These also appear in the case document list.',
+      },
+      {
+        title: 'Track and Report',
+        description:
+          'Keep the status current, watch the dashboard counts, and export the full Search Warrant Register to Excel or PDF.',
+      },
+    ],
+  },
+  {
     id: 'compliance-recommendations',
     title: 'Compliance Tour',
     topicId: 'compliance-recommendations',
@@ -1685,6 +1779,7 @@ const ROUTE_RULES: { pattern: RegExp; topicId: string }[] = [
   { pattern: /^\/communications/, topicId: 'parties-lawyers' },
   { pattern: /^\/lawyers/, topicId: 'parties-lawyers' },
   { pattern: /^\/filings/, topicId: 'external-filings' },
+  { pattern: /^\/search-warrants/, topicId: 'search-warrants' },
   { pattern: /^\/litigation-costs/, topicId: 'reports' },
   { pattern: /^\/file-requests/, topicId: 'create-files' },
   { pattern: /^\/notifications/, topicId: 'dashboard' },

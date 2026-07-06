@@ -35,6 +35,7 @@ import {
   Inbox,
   Download,
   LifeBuoy,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface NavItem {
@@ -141,6 +142,7 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: 'Lawyers', href: '/lawyers', icon: Users, moduleKey: 'lawyers' },
       { name: 'Filings', href: '/filings', icon: FileText, moduleKey: 'filings' },
+      { name: 'Search Warrants', href: '/search-warrants', icon: ShieldAlert, moduleKey: 'search_warrants' },
     ],
   },
   {

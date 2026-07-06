@@ -10,6 +10,7 @@ import { CaseAgeChart } from './CaseAgeChart';
 import { RegionDistributionChart } from './RegionDistributionChart';
 import { AlertsNotificationCard } from './AlertsNotificationCard';
 import { useDashboardStats } from './useDashboardStats';
+import { SearchWarrantStatsCards } from '@/components/search-warrants';
 
 export function DashboardOverview() {
   const { stats, loading, pendingAlerts } = useDashboardStats();
@@ -61,6 +62,9 @@ export function DashboardOverview() {
         thisYear={stats.thisYear}
         lastYear={stats.lastYear}
       />
+
+      {/* Search Warrants overview (hidden until the module table is set up) */}
+      <SearchWarrantStatsCards hideIfMissing title="Search Warrants" />
 
       {/* Charts Row 1: Monthly Trend & Status Distribution */}
       <div data-tour="dashboard-charts" className="grid gap-4 lg:grid-cols-2">

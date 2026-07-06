@@ -68,6 +68,7 @@ import {
 } from 'lucide-react';
 import { WorkflowStepper, getWorkflowStepsFromStatus } from '@/components/dashboard/WorkflowStepper';
 import { CaseTimeline } from '@/components/cases/CaseTimeline';
+import { CaseSearchWarrants } from '@/components/search-warrants';
 
 /* ---------- Types (so nothing is `unknown`) ---------- */
 interface CaseData {
@@ -588,6 +589,7 @@ export default function CaseDetailPage() {
               Alerts ({alerts.length})
             </TabsTrigger>
             <TabsTrigger value="compliance" className="text-xs px-3">Compliance</TabsTrigger>
+            <TabsTrigger value="search-warrants" className="text-xs px-3">Search Warrants</TabsTrigger>
             <TabsTrigger value="history" className="text-xs px-3">History</TabsTrigger>
           </TabsList>
 
@@ -1540,6 +1542,14 @@ export default function CaseDetailPage() {
 
           <TabsContent value="compliance">
             <LinkedRecommendations caseId={caseId} />
+          </TabsContent>
+
+          <TabsContent value="search-warrants">
+            <Card>
+              <CardContent className="pt-6">
+                <CaseSearchWarrants caseId={caseId} />
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="history">

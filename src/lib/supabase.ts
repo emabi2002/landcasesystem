@@ -76,6 +76,7 @@ export type Database = {
           file_type: string;
           file_size: number | null;
           document_type: string | null;
+          search_warrant_id: string | null;
           uploaded_by: string;
           uploaded_at: string;
         };
@@ -437,6 +438,38 @@ export type Database = {
         };
         Insert: Omit<Database['public']['Tables']['audit_logs']['Row'], 'id' | 'logged_at'>;
         Update: Partial<Database['public']['Tables']['audit_logs']['Insert']>;
+      };
+      search_warrants: {
+        Row: {
+          id: string;
+          case_id: string | null;
+          warrant_number: string | null;
+          crime_report_number: string | null;
+          date_received: string | null;
+          received_from: string | null;
+          police_officer_name: string | null;
+          police_officer_rank: string | null;
+          police_contact_details: string | null;
+          received_by: string | null;
+          date_assigned_to_lawyer: string | null;
+          dlpp_lawyer_in_carriage: string | null;
+          applicant_informant: string | null;
+          respondent: string | null;
+          land_description: string | null;
+          legal_issue: string | null;
+          land_file_reference: string | null;
+          title_file_reference: string | null;
+          documents_to_provide: string | null;
+          witness_statement_status: string | null;
+          status: string;
+          remarks_comments: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
+        };
+        Insert: Omit<Database['public']['Tables']['search_warrants']['Row'], 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Database['public']['Tables']['search_warrants']['Insert']>;
       };
     };
     Functions: {
