@@ -1,20 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
-// Use service role key for full database access
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
+import { permissionErrorResponse, requireModulePermission } from '@/lib/auth/require-permission';
 
 export async function POST(request: NextRequest) {
   try {
+    const { user, admin } = await requireModulePermission('filings', 'create');
     const body = await request.json();
     const {
       case_id,
@@ -25,32 +14,26 @@ export async function POST(request: NextRequest) {
       draft_file_url
     } = body;
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (typeof case_id !== 'string' || !case_id.trim()) {
+      return NextResponse.json({ error: 'Case ID is required' }, { status: 400 });
     }
 
-    // Verify user is action officer or admin
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    const profile = profileData as { role?: string } | null;
-
-    if (!profile || !['action_officer_litigation_lawyer', 'admin'].includes(profile.role || '')) {
+    if (
+      typeof filing_type !== 'string' ||
+      !filing_type.trim() ||
+      typeof filing_title !== 'string' ||
+      !filing_title.trim()
+    ) {
       return NextResponse.json(
-        { error: 'Only Action Officers can create filings' },
-        { status: 403 }
+        { error: 'Filing type and title are required' },
+        { status: 400 }
       );
     }
 
-    // Verify case exists and user is assigned
-    const { data: caseData, error: caseError } = await supabase
-      .from('cases')
-      .select('assigned_officer_id, workflow_state')
-      .eq('id', case_id)
+    const { data: caseData, error: caseError } = await admin
+      .from('cases' as never)
+      .select('assigned_officer_id, workflow_state' as never)
+      .eq('id' as never, case_id as never)
       .single();
 
     if (caseError || !caseData) {
@@ -58,16 +41,16 @@ export async function POST(request: NextRequest) {
     }
 
     const caseRecord = caseData as { assigned_officer_id?: string; workflow_state?: string };
-    if (caseRecord.assigned_officer_id !== user.id && profile.role !== 'admin') {
+    const assignedOfficerId = caseRecord.assigned_officer_id;
+    if (assignedOfficerId && assignedOfficerId !== user.id) {
       return NextResponse.json(
         { error: 'You are not assigned to this case' },
         { status: 403 }
       );
     }
 
-    // Create filing
-    const { data: filing, error: filingError } = await supabase
-      .from('filings')
+    const { data: filing, error: filingError } = await admin
+      .from('filings' as never)
       .insert({
         case_id,
         filing_type,
@@ -79,27 +62,25 @@ export async function POST(request: NextRequest) {
         draft_uploaded_at: new Date().toISOString(),
         status: 'draft',
         created_by: user.id
-      })
+      } as never)
       .select()
       .single();
 
     if (filingError) throw filingError;
 
-    // Update case workflow state if needed
     if (caseRecord.workflow_state === 'REGISTRATION_COMPLETED') {
-      await supabase
-        .from('cases')
+      await admin
+        .from('cases' as never)
         .update({
           workflow_state: 'DRAFTING',
           updated_by: user.id,
           updated_at: new Date().toISOString()
-        })
-        .eq('id', case_id);
+        } as never)
+        .eq('id' as never, case_id as never);
     }
 
-    // Create case history entry
-    await supabase
-      .from('case_history')
+    await admin
+      .from('case_history' as never)
       .insert({
         case_id,
         action: 'filing_created',
@@ -110,15 +91,17 @@ export async function POST(request: NextRequest) {
           filing_type,
           filing_title
         }
-      });
+      } as never);
 
     return NextResponse.json({
       success: true,
       filing
     });
-
   } catch (error) {
-    console.error('Error creating filing:', error);
+    const response = permissionErrorResponse(error);
+    if (response) return response;
+
+    console.error('Error creating filing');
     return NextResponse.json(
       { error: 'Failed to create filing' },
       { status: 500 }

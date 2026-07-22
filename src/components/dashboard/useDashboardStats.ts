@@ -23,31 +23,29 @@ export function useDashboardStats(): DashboardStatsHook {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: userRole } = await (supabase as any)
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
+      const { data: canReadNotifications } = await (supabase as any).rpc('user_has_permission', {
+        p_user_id: user.id,
+        p_module_key: 'notifications',
+        p_action: 'read',
+      });
 
-      if (!userRole) return;
-
-      const seniorRoles = ['legal_manager', 'secretary', 'director'];
-      if (!seniorRoles.includes(userRole.role)) {
+      if (canReadNotifications !== true) {
         setPendingAlerts(0);
         return;
       }
 
       const { data, error } = await (supabase as any)
-        .from('communications')
+        .from('notifications')
         .select('id')
-        .eq('communication_type', 'alert')
-        .eq('recipient_role', userRole.role)
-        .eq('response_status', 'pending');
+        .eq('user_id', user.id)
+        .in('priority', ['high', 'urgent'])
+        .eq('read', false);
 
       if (error) throw error;
       setPendingAlerts(data?.length || 0);
     } catch (error) {
       console.error('Error loading pending alerts:', error);
+      setPendingAlerts(0);
     }
   }, []);
 

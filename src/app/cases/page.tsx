@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { logAudit } from '@/lib/permissions';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -178,12 +179,12 @@ export default function CasesPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'cases' },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           if (payload.eventType === 'INSERT') {
-            setCases(prev => [payload.new as CaseRow, ...prev]);
+            setCases(prev => [payload.new as unknown as CaseRow, ...prev]);
             toast.info('New case registered');
           } else if (payload.eventType === 'UPDATE') {
-            setCases(prev => prev.map(c => c.id === payload.new.id ? payload.new as CaseRow : c));
+            setCases(prev => prev.map(c => c.id === payload.new.id ? payload.new as unknown as CaseRow : c));
           } else if (payload.eventType === 'DELETE') {
             setCases(prev => prev.filter(c => c.id !== payload.old.id));
           }
@@ -197,8 +198,11 @@ export default function CasesPage() {
   }, []);
 
   const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) return;
+
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) router.push('/login');
+    if (!user) router.push('/login?redirectedFrom=/cases');
   };
 
   const loadCases = async () => {

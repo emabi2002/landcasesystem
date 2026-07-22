@@ -1,47 +1,43 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-
-// Create admin client with service role key
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
+import { permissionErrorResponse, requireModulePermission } from '@/lib/auth/require-permission';
 
 export async function DELETE(request: Request) {
   try {
+    const { user, admin } = await requireModulePermission('users', 'delete');
     const { userId } = await request.json();
 
-    if (!userId) {
+    if (typeof userId !== 'string' || !userId.trim()) {
       return NextResponse.json(
         { error: 'User ID is required' },
         { status: 400 }
       );
     }
 
-    // Delete user from auth
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
-
-    if (error) {
-      console.error('Error deleting user:', error);
+    if (userId === user.id) {
       return NextResponse.json(
-        { error: error.message },
+        { error: 'Users cannot delete their own account' },
         { status: 400 }
       );
     }
 
-    // User groups will be deleted automatically via CASCADE
+    const { error } = await admin.auth.admin.deleteUser(userId);
+
+    if (error) {
+      console.error('User deletion failed', { requestedBy: user.id, targetUserId: userId });
+      return NextResponse.json(
+        { error: 'Failed to delete user' },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Unexpected error deleting user:', error);
+    const response = permissionErrorResponse(error);
+    if (response) return response;
+
+    console.error('Unexpected error deleting user');
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

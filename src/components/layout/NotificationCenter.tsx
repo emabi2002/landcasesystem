@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -90,9 +91,9 @@ export function NotificationCenter() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications' },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           if (payload.eventType === 'INSERT') {
-            const newNotification = payload.new as Notification;
+            const newNotification = payload.new as unknown as Notification;
             setNotifications(prev => [newNotification, ...prev]);
             // Show toast for new notification
             toast.info(newNotification.title, {
@@ -100,7 +101,7 @@ export function NotificationCenter() {
             });
           } else if (payload.eventType === 'UPDATE') {
             setNotifications(prev =>
-              prev.map(n => n.id === payload.new.id ? payload.new as Notification : n)
+              prev.map(n => n.id === payload.new.id ? payload.new as unknown as Notification : n)
             );
           } else if (payload.eventType === 'DELETE') {
             setNotifications(prev => prev.filter(n => n.id !== payload.old.id));

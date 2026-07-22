@@ -29,8 +29,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   }
 });
 
-const ADMIN_EMAIL = 'admin@dlpp.gov.pg';
-const ADMIN_PASSWORD = 'Admin@2025';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+  console.error('Error: Missing admin setup environment variables');
+  console.error('Set ADMIN_EMAIL and ADMIN_PASSWORD before running this script.');
+  process.exit(1);
+}
 
 async function createAdminUser() {
   console.log('🔧 Creating Admin User...\n');
@@ -172,7 +178,7 @@ async function createAdminUser() {
     console.log('✅ ADMIN USER SETUP COMPLETE!');
     console.log('✅ ========================================\n');
     console.log('📧 Email:', ADMIN_EMAIL);
-    console.log('🔑 Password:', ADMIN_PASSWORD);
+    console.log('🔑 Password: <set-a-secure-password>');
     console.log('👥 Group: Super Admin');
     console.log('🔐 Permissions: Full access (if modules exist)\n');
     console.log('🚀 You can now login at: http://localhost:3000/login\n');

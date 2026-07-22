@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -167,12 +168,12 @@ export default function CommunicationsPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'communications' },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           if (payload.eventType === 'INSERT') {
-            setCommunications(prev => [payload.new as Communication, ...prev]);
+            setCommunications(prev => [payload.new as unknown as Communication, ...prev]);
             toast.info('New communication received');
           } else if (payload.eventType === 'UPDATE') {
-            setCommunications(prev => prev.map(c => c.id === payload.new.id ? payload.new as Communication : c));
+            setCommunications(prev => prev.map(c => c.id === payload.new.id ? payload.new as unknown as Communication : c));
           } else if (payload.eventType === 'DELETE') {
             setCommunications(prev => prev.filter(c => c.id !== payload.old.id));
           }

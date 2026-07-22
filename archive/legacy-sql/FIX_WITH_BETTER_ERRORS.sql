@@ -104,4 +104,4 @@ GRANT EXECUTE ON FUNCTION public.fix_user_group_assignment(TEXT, TEXT) TO servic
 -- ============================================================================
 
 -- Example (replace with actual email!):
--- SELECT * FROM public.fix_user_group_assignment('admin@dlpp.gov.pg', 'Case Officer');
+-- SELECT * FROM public.fix_user_group_assignment('<admin-email>', 'Case Officer');

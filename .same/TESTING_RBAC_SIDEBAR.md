@@ -10,7 +10,7 @@
 ### **Scenario 1: Full Access (Super Admin)**
 
 **Steps:**
-1. Login: `admin@dlpp.gov.pg` / `Admin@2025`
+1. Login: `<admin-email>` / `<set-a-secure-password>`
 2. Check sidebar
 
 **Expected:**

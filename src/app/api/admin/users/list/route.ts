@@ -1,41 +1,29 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-
-// Create admin client with service role key
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
+import { permissionErrorResponse, requireModulePermission } from '@/lib/auth/require-permission';
 
 export async function GET() {
   try {
-    // Get all users from auth
-    const { data: { users }, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
+    const { admin } = await requireModulePermission('users', 'read');
+
+    const { data: { users }, error: usersError } = await admin.auth.admin.listUsers();
 
     if (usersError) {
-      console.error('Error fetching users:', usersError);
+      console.error('Error fetching users');
       return NextResponse.json(
-        { error: usersError.message },
+        { error: 'Failed to fetch users' },
         { status: 400 }
       );
     }
 
-    // For each user, get their groups
     const usersWithGroups = await Promise.all(
       (users || []).map(async (user) => {
-        const { data: userGroupsData } = await supabaseAdmin
-          .from('user_groups')
-          .select('group_id, groups(*)')
-          .eq('user_id', user.id);
+        const { data: userGroupsData } = await admin
+          .from('user_groups' as never)
+          .select('group_id, groups(*)' as never)
+          .eq('user_id' as never, user.id as never);
 
-        const userGroups = (userGroupsData || [])
-          .map(ug => (ug as any).groups)
+        const userGroups = ((userGroupsData || []) as any[])
+          .map(ug => ug.groups)
           .filter(Boolean);
 
         return {
@@ -51,9 +39,12 @@ export async function GET() {
 
     return NextResponse.json({ users: usersWithGroups });
   } catch (error) {
-    console.error('Unexpected error fetching users:', error);
+    const response = permissionErrorResponse(error);
+    if (response) return response;
+
+    console.error('Unexpected error fetching users');
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

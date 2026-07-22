@@ -166,7 +166,7 @@ Every menu item is now mapped to a module key:
 
 ### **Test Scenario 1: Full Access (Super Admin)**
 
-1. Login: `admin@dlpp.gov.pg` / `Admin@2025`
+1. Login: `<admin-email>` / `<set-a-secure-password>`
 2. **Expected:** All menu groups and items visible
 
 ### **Test Scenario 2: Limited Access (Case Officer)**

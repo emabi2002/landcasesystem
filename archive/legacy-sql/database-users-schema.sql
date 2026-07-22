@@ -134,7 +134,7 @@ CREATE TRIGGER on_auth_user_updated
 -- INSERT INTO users (id, email, full_name, role, department, status)
 -- VALUES (
 --   '<your-auth-user-id>',
---   'admin@dlpp.gov.pg',
+--   '<admin-email>',
 --   'System Administrator',
 --   'admin',
 --   'IT Department',

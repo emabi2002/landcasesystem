@@ -68,8 +68,8 @@
 
 ### **Step 1: Navigate to User Management**
 1. Login with admin credentials:
-   - Email: `admin@dlpp.gov.pg`
-   - Password: `Admin@2025`
+   - Email: `<admin-email>`
+   - Password: `<set-a-secure-password>`
 
 2. Go to: **Administration → User Management**
 

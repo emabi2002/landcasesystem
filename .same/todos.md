@@ -35,7 +35,7 @@
 - [x] Created `.env.local` with NEXT_PUBLIC_SUPABASE_URL / ANON_KEY / SERVICE keys
 - [x] Restarted dev server — loads `.env.local`, warning gone
 - [x] Verified auth health (200) and cases table returns live data
-- [x] Verified admin login works (admin@dlpp.gov.pg / Admin@2025)
+- [x] Verified admin login works (<admin-email> / <set-a-secure-password>)
 - [x] Verified admin has 45 module permissions (sidebar will populate)
 - [x] All routes 200, no runtime errors
 

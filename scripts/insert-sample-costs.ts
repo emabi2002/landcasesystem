@@ -1,9 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  'https://yvnkyjnwvylrweyzvibs.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2bmt5am53dnlscndleXp2aWJzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTcyODg1MywiZXhwIjoyMDc3MzA0ODUzfQ.WhJB6KcKefnLAPJqPbvRh2MsVUAZOWHRkKahT2-ERNY'
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error('Required Supabase environment variables are missing');
+}
+
+const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 async function insertSampleCosts() {
   // Get cases
@@ -11,31 +15,31 @@ async function insertSampleCosts() {
     .from('cases')
     .select('id, case_number')
     .limit(5);
-    
+
   if (casesError) {
     console.error('Error fetching cases:', casesError);
     return;
   }
-  
+
   console.log('Found cases:', cases?.length);
-  
+
   // Get categories
   const { data: categories, error: catError } = await supabase
     .from('cost_categories')
     .select('id, code, name');
-    
+
   if (catError) {
     console.error('Error fetching categories:', catError);
     return;
   }
-  
+
   console.log('Found categories:', categories?.length);
-  
+
   if (!cases || !categories) return;
-  
+
   // Insert sample costs
   const sampleCosts: any[] = [];
-  
+
   cases.forEach((caseItem: any, idx: number) => {
     // External Legal Fees
     const legalCat = categories.find((c: any) => c.code === 'LEGAL_EXTERNAL');
@@ -57,7 +61,7 @@ async function insertSampleCosts() {
         reference_number: 'INV-2025-' + String(idx + 1).padStart(4, '0'),
       });
     }
-    
+
     // Court Filing Fees
     const courtCat = categories.find((c: any) => c.code === 'COURT_FILING');
     if (courtCat) {
@@ -77,7 +81,7 @@ async function insertSampleCosts() {
         description: 'Court filing fees',
       });
     }
-    
+
     // Settlement for first case
     if (idx === 0) {
       const settleCat = categories.find((c: any) => c.code === 'SETTLEMENT');
@@ -100,7 +104,7 @@ async function insertSampleCosts() {
         });
       }
     }
-    
+
     // Compensation for second case
     if (idx === 1) {
       const compCat = categories.find((c: any) => c.code === 'COMPENSATION');
@@ -124,25 +128,25 @@ async function insertSampleCosts() {
       }
     }
   });
-  
+
   console.log('Inserting', sampleCosts.length, 'cost entries...');
-  
+
   const { data, error } = await supabase
     .from('litigation_costs')
     .insert(sampleCosts);
-    
+
   if (error) {
     console.error('Error inserting costs:', error);
   } else {
     console.log('Successfully inserted sample costs!');
   }
-  
+
   // Verify
   const { data: verify, error: verifyError } = await supabase
     .from('litigation_costs')
     .select('id, cost_type, amount, payment_status')
     .eq('is_deleted', false);
-    
+
   console.log('Total costs in database:', verify?.length || 0);
   if (verify && verify.length > 0) {
     const total = verify.reduce((sum: number, c: any) => sum + c.amount, 0);

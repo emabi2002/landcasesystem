@@ -27,7 +27,7 @@
 **Status:** ✅ Deployed and working
 
 ### ✅ **Issue 2: Cannot Login**
-**Problem:** Admin user didn't exist (`admin@dlpp.gov.pg`)
+**Problem:** Admin user didn't exist (`<admin-email>`)
 **Solution:** Created automated setup script
 **Status:** ✅ Admin user created successfully
 
@@ -40,8 +40,8 @@
 
 ## 🔐 Login Credentials
 
-**Email:** `admin@dlpp.gov.pg`
-**Password:** `Admin@2025`
+**Email:** `<admin-email>`
+**Password:** `<set-a-secure-password>`
 **URL:** http://localhost:3000/login
 
 **Status:** ✅ Working - Admin user exists with full permissions
@@ -87,7 +87,7 @@ User Login → get_user_permissions() → Filter by can_read → Show Menu Items
 
 ### **2. Admin User System**
 ```
-Run: bun run setup:admin → Creates admin@dlpp.gov.pg → Assigns to Super Admin → Full permissions
+Run: bun run setup:admin → Creates <admin-email> → Assigns to Super Admin → Full permissions
 ```
 
 **Features:**
@@ -112,7 +112,7 @@ Old Page (/admin) → Auto-redirect → New Page (/admin/users)
 
 ### **Test 1: Login** ✅
 - [ ] Go to: http://localhost:3000/login
-- [ ] Use: `admin@dlpp.gov.pg` / `Admin@2025`
+- [ ] Use: `<admin-email>` / `<set-a-secure-password>`
 - [ ] Click "Sign In"
 - [ ] Should redirect to Dashboard
 
@@ -188,7 +188,7 @@ bun run dev
 
 ### **Step 5: Login**
 - Go to: http://localhost:3000/login
-- Use: `admin@dlpp.gov.pg` / `Admin@2025`
+- Use: `<admin-email>` / `<set-a-secure-password>`
 
 ---
 
@@ -270,8 +270,8 @@ bun run setup:admin
 ## ⚠️ Important Notes
 
 ### **1. Admin Credentials**
-- Default email: `admin@dlpp.gov.pg`
-- Default password: `Admin@2025`
+- Default email: `<admin-email>`
+- Default password: `<set-a-secure-password>`
 - **Change password after first login in production!**
 
 ### **2. User Management**
@@ -389,7 +389,7 @@ All systems checked and verified:
 ## 🚀 Next Steps
 
 ### **For You:**
-1. ✅ Login with `admin@dlpp.gov.pg` / `Admin@2025`
+1. ✅ Login with `<admin-email>` / `<set-a-secure-password>`
 2. ✅ Test user creation at `/admin/users`
 3. ✅ Verify sidebar shows all menu items
 4. ✅ Create test users with different groups

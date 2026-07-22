@@ -182,8 +182,8 @@ const visibleGroups = navigationGroups
 ### **Test Scenario 1: User with Full Permissions**
 
 1. **Login as admin:**
-   - Email: `admin@dlpp.gov.pg`
-   - Password: `Admin@2025`
+   - Email: `<admin-email>`
+   - Password: `<set-a-secure-password>`
 
 2. **Expected Result:**
    - ✅ All menu groups visible

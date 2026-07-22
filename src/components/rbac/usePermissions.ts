@@ -9,21 +9,19 @@ import {
 import type { PermissionAction, ModulePermission } from '@/lib/rbac-types';
 
 export function usePermissions(moduleKey: string) {
-  // DEVELOPMENT MODE: Grant all permissions by default
   const [permissions, setPermissions] = useState({
-    canCreate: true,
-    canRead: true,
-    canUpdate: true,
-    canDelete: true,
-    canPrint: true,
-    canApprove: true,
-    canExport: true,
+    canCreate: false,
+    canRead: false,
+    canUpdate: false,
+    canDelete: false,
+    canPrint: false,
+    canApprove: false,
+    canExport: false,
   });
-  const [loading, setLoading] = useState(false); // Set to false for instant access
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Comment out permission loading for development
-    // loadPermissions();
+    loadPermissions();
   }, [moduleKey]);
 
   const loadPermissions = async () => {
@@ -53,13 +51,11 @@ export function usePermissions(moduleKey: string) {
 }
 
 export function useHasPermission(moduleKey: string, action: PermissionAction) {
-  // DEVELOPMENT MODE: Grant access by default
-  const [hasAccess, setHasAccess] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Comment out permission check for development
-    // checkPermission();
+    checkPermission();
   }, [moduleKey, action]);
 
   const checkPermission = async () => {

@@ -31,6 +31,7 @@ import { format } from 'date-fns';
 import { AddUserDialog } from '@/components/admin/AddUserDialog';
 import { EditUserDialog } from '@/components/admin/EditUserDialog';
 import { ManageUserGroupsDialog } from '@/components/admin/ManageUserGroupsDialog';
+import { usePermissions } from '@/components/rbac/usePermissions';
 
 interface AuthUser {
   id: string;
@@ -57,6 +58,7 @@ export default function UsersAdminPage() {
   const [editingUser, setEditingUser] = useState<UserWithGroups | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [assigning, setAssigning] = useState(false);
+  const { canCreate, canUpdate, canDelete } = usePermissions('users');
 
   useEffect(() => {
     checkAuth();
@@ -224,14 +226,16 @@ export default function UsersAdminPage() {
             <h1 className="text-3xl font-bold text-slate-900">User Management</h1>
             <p className="text-slate-600 mt-1">Manage users and their group assignments</p>
           </div>
-          <Button
-            onClick={() => setCreateUserDialogOpen(true)}
-            size="lg"
-            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
-            <UserPlus className="h-5 w-5" />
-            Create New User
-          </Button>
+          {canCreate && (
+            <Button
+              onClick={() => setCreateUserDialogOpen(true)}
+              size="lg"
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              <UserPlus className="h-5 w-5" />
+              Create New User
+            </Button>
+          )}
         </div>
 
         {/* Search */}
@@ -307,12 +311,15 @@ export default function UsersAdminPage() {
                                 className="bg-blue-100 text-blue-800 border-blue-200 gap-2"
                               >
                                 {group.group_name}
-                                <button
-                                  onClick={() => removeUserFromGroup(user.id, group.id)}
-                                  className="hover:text-blue-900"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
+                                {canUpdate && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeUserFromGroup(user.id, group.id)}
+                                    className="hover:text-blue-900"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                )}
                               </Badge>
                             ))
                           ) : (
@@ -323,32 +330,38 @@ export default function UsersAdminPage() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button
-                        onClick={() => openEditDialog(user)}
-                        size="sm"
-                        variant="outline"
-                        className="gap-2"
-                      >
-                        <Edit className="h-4 w-4" />
-                        Edit
-                      </Button>
-                      <Button
-                        onClick={() => openAssignDialog(user)}
-                        size="sm"
-                        className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                      >
-                        <Settings className="h-4 w-4" />
-                        Manage Groups
-                      </Button>
-                      <Button
-                        onClick={() => handleDeleteUser(user)}
-                        size="sm"
-                        variant="outline"
-                        className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </Button>
+                      {canUpdate && (
+                        <Button
+                          onClick={() => openEditDialog(user)}
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                        >
+                          <Edit className="h-4 w-4" />
+                          Edit
+                        </Button>
+                      )}
+                      {canUpdate && (
+                        <Button
+                          onClick={() => openAssignDialog(user)}
+                          size="sm"
+                          className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          <Settings className="h-4 w-4" />
+                          Manage Groups
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          onClick={() => handleDeleteUser(user)}
+                          size="sm"
+                          variant="outline"
+                          className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -378,21 +391,23 @@ export default function UsersAdminPage() {
         />
       )}
 
-      {/* Create User Dialog */}
-      <AddUserDialog
-        open={createUserDialogOpen}
-        onOpenChange={setCreateUserDialogOpen}
-        onSuccess={loadData}
-        groups={groups}
-      />
+      {canCreate && (
+        <AddUserDialog
+          open={createUserDialogOpen}
+          onOpenChange={setCreateUserDialogOpen}
+          onSuccess={loadData}
+          groups={groups}
+        />
+      )}
 
-      {/* Edit User Dialog */}
-      <EditUserDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        onSuccess={loadData}
-        user={editingUser}
-      />
+      {canUpdate && (
+        <EditUserDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSuccess={loadData}
+          user={editingUser}
+        />
+      )}
     </AppLayout>
   );
 }

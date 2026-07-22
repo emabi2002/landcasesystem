@@ -1,21 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-
-// Create Supabase client with service role for server-side operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
+import { permissionErrorResponse, requireModulePermission } from '@/lib/auth/require-permission';
 
 // POST: Link recommendation to legal case
 export async function POST(request: Request) {
   try {
+    const { user, admin } = await requireModulePermission('compliance', 'update');
     const body = await request.json();
     const {
       legal_case_id,
@@ -26,47 +15,52 @@ export async function POST(request: Request) {
       recommendation_data,
     } = body;
 
-    // Validate required fields
-    if (!legal_case_id || !recommendation_id) {
+    if (
+      typeof legal_case_id !== 'string' ||
+      !legal_case_id.trim() ||
+      typeof recommendation_id !== 'string' ||
+      !recommendation_id.trim()
+    ) {
       return NextResponse.json(
         { error: 'Missing required fields: legal_case_id and recommendation_id' },
         { status: 400 }
       );
     }
 
-    // Prepare snapshot data if requested
     const snapshot_data = create_snapshot ? recommendation_data : null;
 
-    // Call database function to create link
-    const { data, error } = await supabaseAdmin.rpc('link_recommendation_to_case', {
-      p_legal_case_id: legal_case_id,
-      p_recommendation_id: recommendation_id,
-      p_link_type: link_type,
-      p_link_context: link_context,
-      p_snapshot_data: snapshot_data,
-    });
+    console.info('Compliance link request received', { userId: user.id });
+    const { data, error } = await admin.rpc(
+      'link_recommendation_to_case' as never,
+      {
+        p_legal_case_id: legal_case_id,
+        p_recommendation_id: recommendation_id,
+        p_link_type: link_type,
+        p_link_context: link_context,
+        p_snapshot_data: snapshot_data,
+      } as never
+    );
 
     if (error) {
-      console.error('Link creation error:', error);
+      console.error('Link creation error');
       return NextResponse.json(
-        { error: error.message },
+        { error: 'Failed to link recommendation' },
         { status: 400 }
       );
     }
-
-    // Optionally notify compliance system (implement if needed)
-    // await notifyComplianceSystem(recommendation_id, legal_case_id);
 
     return NextResponse.json({
       success: true,
       link_id: data,
       message: 'Recommendation linked successfully',
     });
-
   } catch (error) {
-    console.error('Link recommendation error:', error);
+    const response = permissionErrorResponse(error);
+    if (response) return response;
+
+    console.error('Link recommendation error');
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -75,6 +69,7 @@ export async function POST(request: Request) {
 // DELETE: Unlink recommendation from case
 export async function DELETE(request: Request) {
   try {
+    const { user, admin } = await requireModulePermission('compliance', 'update');
     const { searchParams } = new URL(request.url);
     const linkId = searchParams.get('link_id');
     const reason = searchParams.get('reason');
@@ -86,16 +81,19 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Call database function to unlink
-    const { data, error } = await supabaseAdmin.rpc('unlink_recommendation_from_case', {
-      p_link_id: linkId,
-      p_reason: reason,
-    });
+    console.info('Compliance unlink request received', { userId: user.id });
+    const { data, error } = await admin.rpc(
+      'unlink_recommendation_from_case' as never,
+      {
+        p_link_id: linkId,
+        p_reason: reason,
+      } as never
+    );
 
     if (error) {
-      console.error('Unlink error:', error);
+      console.error('Unlink error');
       return NextResponse.json(
-        { error: error.message },
+        { error: 'Failed to unlink recommendation' },
         { status: 400 }
       );
     }
@@ -104,11 +102,13 @@ export async function DELETE(request: Request) {
       success: data,
       message: 'Recommendation unlinked successfully',
     });
-
   } catch (error) {
-    console.error('Unlink recommendation error:', error);
+    const response = permissionErrorResponse(error);
+    if (response) return response;
+
+    console.error('Unlink recommendation error');
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

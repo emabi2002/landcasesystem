@@ -13,8 +13,8 @@ Your admin user has been **successfully created** and is ready to use!
 
 ## 🔐 Login Credentials
 
-**Email:** `admin@dlpp.gov.pg`
-**Password:** `Admin@2025`
+**Email:** `<admin-email>`
+**Password:** `<set-a-secure-password>`
 
 **Login URL:** http://localhost:3000/login
 
@@ -23,8 +23,8 @@ Your admin user has been **successfully created** and is ready to use!
 ## ✅ What Was Done
 
 ### **1. Admin User Created**
-- ✅ Email: `admin@dlpp.gov.pg`
-- ✅ Password: `Admin@2025`
+- ✅ Email: `<admin-email>`
+- ✅ Password: `<set-a-secure-password>`
 - ✅ Email confirmed (no verification needed)
 - ✅ Full name: System Administrator
 
@@ -44,7 +44,7 @@ Your admin user has been **successfully created** and is ready to use!
 
 ### **4. Login Page Updated**
 - ✅ Default credentials updated to match
-- ✅ Pre-fills `admin@dlpp.gov.pg` / `Admin@2025`
+- ✅ Pre-fills `<admin-email>` / `<set-a-secure-password>`
 
 ---
 
@@ -60,8 +60,8 @@ http://localhost:3000/login
 ### **Step 2: Credentials Should Be Pre-filled**
 
 You should see:
-- Email: `admin@dlpp.gov.pg` ✅ (already filled)
-- Password: `Admin@2025` ✅ (already filled as dots)
+- Email: `<admin-email>` ✅ (already filled)
+- Password: `<set-a-secure-password>` ✅ (already filled as dots)
 
 ### **Step 3: Click "Sign In"**
 
@@ -104,8 +104,8 @@ You should be redirected to the **Dashboard** and see:
 ### **Modified:**
 
 1. **`src/app/login/page.tsx`**
-   - Updated default email to `admin@dlpp.gov.pg`
-   - Updated default password to `Admin@2025`
+   - Updated default email to `<admin-email>`
+   - Updated default password to `<set-a-secure-password>`
 
 2. **`package.json`**
    - Added `setup:admin` script for easy user creation
@@ -116,8 +116,8 @@ You should be redirected to the **Dashboard** and see:
 
 | Field | Value |
 |-------|-------|
-| **Email** | admin@dlpp.gov.pg |
-| **Password** | Admin@2025 |
+| **Email** | <admin-email> |
+| **Password** | <set-a-secure-password> |
 | **Group** | Super Admin |
 | **Modules** | 25 modules |
 | **Permissions** | Full (all 7 permission types) |
@@ -240,8 +240,8 @@ See `SETUP_ADMIN_USER.md` for detailed manual instructions
 1. Hard refresh the login page: `Ctrl + Shift + R`
 2. Clear browser cache
 3. Make sure you're using:
-   - Email: `admin@dlpp.gov.pg`
-   - Password: `Admin@2025`
+   - Email: `<admin-email>`
+   - Password: `<set-a-secure-password>`
 4. Check Supabase → Authentication → Users to verify user exists
 
 ---
@@ -267,7 +267,7 @@ The `get_user_permissions` RPC function might be missing. See `SETUP_ADMIN_USER.
 
 After logging in, verify:
 
-- [ ] Login successful with `admin@dlpp.gov.pg` / `Admin@2025`
+- [ ] Login successful with `<admin-email>` / `<set-a-secure-password>`
 - [ ] Redirected to Dashboard
 - [ ] All menu groups visible in sidebar
 - [ ] Can access Administration → User Management
@@ -302,7 +302,7 @@ If you still have issues:
 
 ## 🎊 Summary
 
-**Problem:** Could not login with `admin@dlpp.gov.pg` / `Admin@2025`
+**Problem:** Could not login with `<admin-email>` / `<set-a-secure-password>`
 **Cause:** Admin user didn't exist in database
 **Solution:** Created admin user with full permissions
 **Status:** ✅ **FIXED - Ready to use!**
@@ -310,8 +310,8 @@ If you still have issues:
 ---
 
 **🔐 Your Credentials:**
-- **Email:** `admin@dlpp.gov.pg`
-- **Password:** `Admin@2025`
+- **Email:** `<admin-email>`
+- **Password:** `<set-a-secure-password>`
 - **URL:** http://localhost:3000/login
 
 **Just login and start using the system!** 🚀

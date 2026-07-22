@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -162,12 +163,12 @@ export default function DocumentsPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'documents' },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           if (payload.eventType === 'INSERT') {
-            setDocuments(prev => [payload.new as Document, ...prev]);
+            setDocuments(prev => [payload.new as unknown as Document, ...prev]);
             toast.info('New document uploaded');
           } else if (payload.eventType === 'UPDATE') {
-            setDocuments(prev => prev.map(d => d.id === payload.new.id ? payload.new as Document : d));
+            setDocuments(prev => prev.map(d => d.id === payload.new.id ? payload.new as unknown as Document : d));
           } else if (payload.eventType === 'DELETE') {
             setDocuments(prev => prev.filter(d => d.id !== payload.old.id));
           }

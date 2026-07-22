@@ -40,7 +40,7 @@ SELECT group_name FROM public.groups ORDER BY group_name;
 
 ### **Option A: Use UI (Recommended)**
 
-1. **Login as admin** (admin@dlpp.gov.pg)
+1. **Login as admin** (<admin-email>)
 2. **Go to:** Administration → Groups
 3. **Find:** "Case Officer" group
 4. **Click:** "Manage Permissions" button

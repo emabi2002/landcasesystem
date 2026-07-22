@@ -1,87 +1,89 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
-// Use service role key for full database access
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
+import {
+  permissionErrorResponse,
+  requireAnyModulePermission,
+  requireModulePermission,
+} from '@/lib/auth/require-permission';
 
 export async function POST(request: NextRequest) {
   try {
+    const { user, admin } = await requireAnyModulePermission([
+      { moduleKey: 'correspondence', action: 'create' },
+    ]);
+
     const formData = await request.json();
 
-    console.log('📝 Registering document at front counter...');
+    if (typeof formData.document_type !== 'string' || !formData.document_type.trim()) {
+      return NextResponse.json(
+        { success: false, error: 'Document type is required' },
+        { status: 400 }
+      );
+    }
+
+    console.info('Reception registration request received', { userId: user.id });
 
     // Step 1: Generate serial number
-    const { data: serialNumberData, error: serialError } = await supabase
-      .rpc('generate_intake_serial_number');
+    const { data: serialNumberData, error: serialError } = await admin.rpc(
+      'generate_intake_serial_number' as never
+    );
 
     if (serialError) {
-      console.error('Serial number generation error:', serialError);
+      console.error('Serial number generation error');
       throw new Error('Failed to generate serial number');
     }
 
-    const serialNumber = serialNumberData || `DLPP-DOC-${new Date().getFullYear()}-${Date.now().toString().slice(-3)}`;
-    console.log(`🔢 Generated serial number: ${serialNumber}`);
+    const serialNumber =
+      serialNumberData || `DLPP-DOC-${new Date().getFullYear()}-${Date.now().toString().slice(-3)}`;
 
     // Step 2: Insert intake record
-    const { data: intakeRecord, error: intakeError } = await supabase
-      .from('case_intake_records')
-      .insert([{
-        internal_serial_number: serialNumber,
-        document_type: formData.document_type,
-        source: formData.source,
-        from_party_type: formData.from_party_type,
-        from_office_name: formData.from_office_name,
-        from_contact_person: formData.from_contact_person,
-        delivered_by_name: formData.delivered_by_name,
-        delivered_by_contact: formData.delivered_by_contact,
-        physical_folder_number: formData.physical_folder_number,
-        physical_location: formData.physical_location || 'Reception Desk',
-        date_stamped: new Date().toISOString(),
-        received_date: new Date().toISOString(),
-        received_by: formData.user_id,
-        created_by: formData.user_id,
-        notes: formData.notes,
-        urgent: formData.urgent || false,
-        status: 'received',
-        case_id: null, // Document received before case created
-      }])
+    const { data: intakeRecord, error: intakeError } = await admin
+      .from('case_intake_records' as never)
+      .insert([
+        {
+          internal_serial_number: serialNumber,
+          document_type: formData.document_type,
+          source: formData.source,
+          from_party_type: formData.from_party_type,
+          from_office_name: formData.from_office_name,
+          from_contact_person: formData.from_contact_person,
+          delivered_by_name: formData.delivered_by_name,
+          delivered_by_contact: formData.delivered_by_contact,
+          physical_folder_number: formData.physical_folder_number,
+          physical_location: formData.physical_location || 'Reception Desk',
+          date_stamped: new Date().toISOString(),
+          received_date: new Date().toISOString(),
+          received_by: user.id,
+          created_by: user.id,
+          notes: formData.notes,
+          urgent: formData.urgent || false,
+          status: 'received',
+          case_id: null,
+        },
+      ] as never)
       .select()
       .single();
 
     if (intakeError) {
-      console.error('Intake record error:', intakeError);
+      console.error('Intake record error');
       throw intakeError;
     }
 
-    console.log(`✅ Intake record created: ${intakeRecord.id}`);
-
     // Step 3: Upload document if provided
     if (formData.scanned_document_url) {
-      const { error: docError } = await supabase
-        .from('case_intake_documents')
+      const { error: docError } = await admin
+        .from('case_intake_documents' as never)
         .insert({
-          intake_record_id: intakeRecord.id,
+          intake_record_id: (intakeRecord as { id: string }).id,
           file_name: formData.file_name || 'scanned-document.pdf',
           file_url: formData.scanned_document_url,
           file_size: formData.file_size || null,
-          uploaded_by: formData.user_id,
+          uploaded_by: user.id,
           uploaded_at: new Date().toISOString(),
-        });
+        } as never);
 
       if (docError) {
-        console.error('Document upload error:', docError);
+        console.error('Document upload error');
         // Don't fail the whole operation if document upload fails
-      } else {
-        console.log('✅ Document uploaded');
       }
     }
 
@@ -91,13 +93,15 @@ export async function POST(request: NextRequest) {
       serial_number: serialNumber,
       message: 'Document registered successfully at front counter',
     });
-
   } catch (error: any) {
-    console.error('❌ Registration error:', error);
+    const response = permissionErrorResponse(error);
+    if (response) return response;
+
+    console.error('Reception registration failed');
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to register document'
+        error: 'Failed to register document',
       },
       { status: 500 }
     );
@@ -107,13 +111,15 @@ export async function POST(request: NextRequest) {
 // GET endpoint to fetch intake records
 export async function GET(request: NextRequest) {
   try {
+    const { admin } = await requireModulePermission('correspondence', 'read');
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const today = searchParams.get('today') === 'true';
 
-    let query = supabase
-      .from('case_intake_records')
-      .select('*, case_intake_documents(*)');
+    let query = admin
+      .from('case_intake_records' as never)
+      .select('*, case_intake_documents(*)' as never);
 
     if (status) {
       query = query.eq('status', status);
@@ -136,11 +142,13 @@ export async function GET(request: NextRequest) {
       records: data || [],
       count: data?.length || 0,
     });
-
   } catch (error: any) {
-    console.error('❌ Fetch error:', error);
+    const response = permissionErrorResponse(error);
+    if (response) return response;
+
+    console.error('Reception fetch failed');
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: 'Failed to fetch intake records' },
       { status: 500 }
     );
   }

@@ -9,8 +9,8 @@
 ### **Step 1: Login (30 seconds)**
 ```
 1. Go to: http://localhost:3000/login
-2. Email: admin@dlpp.gov.pg
-3. Password: Admin@2025
+2. Email: <admin-email>
+3. Password: <set-a-secure-password>
 4. Click "Sign In"
 ```
 

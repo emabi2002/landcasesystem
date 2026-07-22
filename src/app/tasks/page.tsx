@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -191,12 +192,12 @@ export default function TasksPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks' },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           if (payload.eventType === 'INSERT') {
-            setTasks(prev => [payload.new as TaskType, ...prev]);
+            setTasks(prev => [payload.new as unknown as TaskType, ...prev]);
             toast.info('New task created');
           } else if (payload.eventType === 'UPDATE') {
-            setTasks(prev => prev.map(t => t.id === payload.new.id ? payload.new as TaskType : t));
+            setTasks(prev => prev.map(t => t.id === payload.new.id ? payload.new as unknown as TaskType : t));
           } else if (payload.eventType === 'DELETE') {
             setTasks(prev => prev.filter(t => t.id !== payload.old.id));
           }

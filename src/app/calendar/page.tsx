@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -151,12 +152,12 @@ export default function CalendarPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'events' },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           if (payload.eventType === 'INSERT') {
-            setEvents(prev => [payload.new as EventItem, ...prev]);
+            setEvents(prev => [payload.new as unknown as EventItem, ...prev]);
             toast.info('New event added');
           } else if (payload.eventType === 'UPDATE') {
-            setEvents(prev => prev.map(e => e.id === payload.new.id ? payload.new as EventItem : e));
+            setEvents(prev => prev.map(e => e.id === payload.new.id ? payload.new as unknown as EventItem : e));
           } else if (payload.eventType === 'DELETE') {
             setEvents(prev => prev.filter(e => e.id !== payload.old.id));
           }

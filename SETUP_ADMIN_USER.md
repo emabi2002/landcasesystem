@@ -1,6 +1,6 @@
 # 🔐 Admin User Setup Guide
 
-**Issue:** Cannot login with `admin@dlpp.gov.pg` / `Admin@2025`
+**Issue:** Cannot login with `<admin-email>` / `<set-a-secure-password>`
 **Cause:** Admin user doesn't exist in Supabase Auth yet
 **Solution:** Create the admin user (2 options below)
 
@@ -31,8 +31,8 @@ If these work, skip to "Update Admin Credentials" section below.
 1. Click **"Add user"** button (top right)
 2. Click **"Create new user"**
 3. Fill in the form:
-   - **Email:** `admin@dlpp.gov.pg`
-   - **Password:** `Admin@2025`
+   - **Email:** `<admin-email>`
+   - **Password:** `<set-a-secure-password>`
    - **Auto Confirm User:** ✅ Check this box
 4. Click **"Create user"**
 
@@ -54,7 +54,7 @@ BEGIN
   -- Get the admin user's ID
   SELECT id INTO admin_user_id
   FROM auth.users
-  WHERE email = 'admin@dlpp.gov.pg';
+  WHERE email = '<admin-email>';
 
   -- Get the Super Admin group ID (create if doesn't exist)
   SELECT id INTO super_admin_group_id
@@ -143,8 +143,8 @@ END $$;
 
 1. Go to: http://localhost:3000/login
 2. Enter:
-   - Email: `admin@dlpp.gov.pg`
-   - Password: `Admin@2025`
+   - Email: `<admin-email>`
+   - Password: `<set-a-secure-password>`
 3. Click **Sign In**
 4. You should now be logged in! ✅
 
@@ -159,17 +159,17 @@ If you used the default credentials (`admin@lands.gov.pg` / `demo123`) and want 
 1. Go to: Supabase → Authentication → Users
 2. Find the user `admin@lands.gov.pg`
 3. Click the **...** menu → **Reset password**
-4. Enter new password: `Admin@2025`
+4. Enter new password: `<set-a-secure-password>`
 5. Click **Update user**
 
 ### **Option B: Change Email Address**
 
-If you want to change the email to `admin@dlpp.gov.pg`:
+If you want to change the email to `<admin-email>`:
 
 1. In Supabase → Authentication → Users
 2. Find `admin@lands.gov.pg`
 3. Click **Edit user**
-4. Change email to: `admin@dlpp.gov.pg`
+4. Change email to: `<admin-email>`
 5. Click **Save**
 
 ---
@@ -178,7 +178,7 @@ If you want to change the email to `admin@dlpp.gov.pg`:
 
 After setup, verify everything works:
 
-- [ ] Can login with `admin@dlpp.gov.pg` / `Admin@2025`
+- [ ] Can login with `<admin-email>` / `<set-a-secure-password>`
 - [ ] Redirected to dashboard after login
 - [ ] Can see all menu items in sidebar (Dashboard, Case Workflow, Administration, etc.)
 - [ ] Can access Administration → User Management
@@ -268,8 +268,8 @@ $$;
 - Password: `demo123`
 
 ### **Recommended Admin Credentials:**
-- Email: `admin@dlpp.gov.pg`
-- Password: `Admin@2025`
+- Email: `<admin-email>`
+- Password: `<set-a-secure-password>`
 
 ### **Supabase Project:**
 - URL: https://yvnkyjnwvylrweyzvibs.supabase.co
@@ -279,7 +279,7 @@ $$;
 
 ## 🎯 Summary
 
-**Problem:** Cannot login with `admin@dlpp.gov.pg` / `Admin@2025`
+**Problem:** Cannot login with `<admin-email>` / `<set-a-secure-password>`
 
 **Quick Solution:** Try default credentials: `admin@lands.gov.pg` / `demo123`
 

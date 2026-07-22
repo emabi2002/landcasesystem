@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Plus, Loader2 } from 'lucide-react';
+import { hasPermission } from '@/lib/permissions';
 
 interface LookupItem {
   id: string;
@@ -95,29 +96,9 @@ export function SelectWithAdd({
 
   const checkAdminStatus = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setIsAdmin(false);
-        return;
-      }
-
-      // Check if user is admin from profiles table
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      if (profile) {
-        const role = (profile as { role?: string }).role;
-        setIsAdmin(role === 'admin' || role === 'administrator' || role === 'manager_legal_services');
-      } else {
-        // Default to admin if no profile (for development)
-        setIsAdmin(true);
-      }
-    } catch (error) {
-      // Default to admin for development
-      setIsAdmin(true);
+      setIsAdmin(await hasPermission('master_files', 'create'));
+    } catch {
+      setIsAdmin(false);
     }
   };
 

@@ -204,7 +204,7 @@ To add/update a user's full name:
 ### **Test 1: Dashboard Visibility**
 
 **As Admin:**
-- [ ] Login as `admin@dlpp.gov.pg`
+- [ ] Login as `<admin-email>`
 - [ ] Should see "Dashboard → Overview" in sidebar ✅
 
 **As Case Officer:**

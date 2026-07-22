@@ -139,7 +139,7 @@ export default function ExportSchedulingPage() {
             dayOfWeek: 1, // Monday
             time: '09:00',
             emailDelivery: true,
-            emailRecipients: ['admin@dlpp.gov.pg'],
+            emailRecipients: ['<admin-email>'],
             active: true,
             lastRun: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
             lastStatus: 'success',

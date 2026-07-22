@@ -20,5 +20,9 @@ bun run dev
 
 ## Login
 
-- Email: admin@dlpp.gov.pg
-- Password: Admin@2025
+- Email: <admin-email>
+- Password: <set-a-secure-password>
+
+## Security notice
+
+A Supabase service-role key was previously committed to this repository. The system owner must revoke and regenerate that service-role key manually in Supabase, then update deployment environment variables before the next production deployment.

@@ -282,6 +282,11 @@ export default function LitigationCostsPage() {
     }).format(amount);
   };
 
+  const formatChartCurrency = (value: unknown) => {
+    const numericValue = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(numericValue) ? formatCurrency(numericValue) : formatCurrency(0);
+  };
+
   const exportToExcel = async () => {
     try {
       const xlsx = await import('xlsx');
@@ -667,7 +672,7 @@ export default function LitigationCostsPage() {
                         <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                         <YAxis tickFormatter={(value) => `K${(value / 1000).toFixed(0)}k`} />
                         <Tooltip
-                          formatter={(value: number) => formatCurrency(value)}
+                          formatter={(value) => formatChartCurrency(value)}
                           labelStyle={{ fontWeight: 'bold' }}
                         />
                         <Legend />
@@ -711,7 +716,7 @@ export default function LitigationCostsPage() {
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                        <Tooltip formatter={(value) => formatChartCurrency(value)} />
                       </RePieChart>
                     </ResponsiveContainer>
                   ) : (

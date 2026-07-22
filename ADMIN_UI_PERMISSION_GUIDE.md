@@ -26,8 +26,8 @@ As an administrator, you can configure all user permissions through the web inte
 
 1. Go to: http://localhost:3000/login
 2. Login with admin credentials:
-   - Email: `admin@dlpp.gov.pg`
-   - Password: `Admin@2025`
+   - Email: `<admin-email>`
+   - Password: `<set-a-secure-password>`
 
 ---
 

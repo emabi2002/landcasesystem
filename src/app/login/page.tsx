@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,15 +9,18 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@dlpp.gov.pg');
-  const [password, setPassword] = useState('Admin@2025');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const searchParams = useSearchParams();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage('');
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -27,12 +30,32 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      toast.success('Login successful!');
-      router.push('/cases');
-      router.refresh();
+      if (!data.session) {
+        throw new Error('Login succeeded but no session was returned. Please try again.');
+      }
+
+      const sessionResponse = await fetch('/api/auth/session', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        }),
+      });
+
+      if (!sessionResponse.ok) {
+        throw new Error('Login succeeded but the server session could not be established. Please try again.');
+      }
+
+      const redirectedFrom = searchParams.get('redirectedFrom');
+      const destination = redirectedFrom && redirectedFrom.startsWith('/') ? redirectedFrom : '/cases';
+      toast.success('Login successful. Redirecting...');
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      window.location.href = destination;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to login';
-      toast.error(errorMessage);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to login');
+      toast.error(error instanceof Error ? error.message : 'Failed to login');
     } finally {
       setLoading(false);
     }
@@ -80,6 +103,11 @@ export default function LoginPage() {
                 className="h-10"
               />
             </div>
+            {errorMessage && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {errorMessage}
+              </div>
+            )}
             <Button
               type="submit"
               className="w-full h-10 text-white font-semibold hover:opacity-90 transition-opacity"
@@ -92,5 +120,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -236,8 +236,8 @@ Push: Successful ✓
 ### **Step 1: Login**
 1. Go to: http://localhost:3000/login
 2. Enter credentials:
-   - Email: `admin@dlpp.gov.pg`
-   - Password: `Admin@2025`
+   - Email: `<admin-email>`
+   - Password: `<set-a-secure-password>`
 3. Click "Sign In"
 
 ### **Step 2: Navigate to User Management**
