@@ -2,6 +2,18 @@
 -- Purpose: Development/staging seed data ONLY. Never run in production.
 -- Safety: No real credentials, no real legal matters, no personal data.
 -- This seed does not create auth users. Create auth users via Supabase Auth, then assign groups.
+--
+-- Usage:
+--   set app.confirm_dev_seed = 'STAGING_OR_LOCAL';
+--   \i supabase/seed/development_seed.sql
+
+do $$
+begin
+  if current_setting('app.confirm_dev_seed', true) is distinct from 'STAGING_OR_LOCAL' then
+    raise exception 'Refusing to run development seed without confirmation. Set app.confirm_dev_seed = STAGING_OR_LOCAL.';
+  end if;
+end;
+$$;
 
 -- Canonical modules.
 insert into public.modules (module_key, module_name, category, route, display_order)

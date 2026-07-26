@@ -11,6 +11,7 @@
     "test": "vitest run",
     "format": "bunx biome format --write",
     "setup:admin": "bun run scripts/create-admin-user.ts",
+    "seed:staging": "bun run scripts/seed-staging-database.ts",
     "prepare": "husky"
   },
   "lint-staged": {
