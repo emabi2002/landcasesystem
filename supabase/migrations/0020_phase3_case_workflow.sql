@@ -121,7 +121,7 @@ language sql
 stable
 set search_path = public
 as $$
-  select * from (values
+  select module_key, action from (values
     ('REGISTERED','ASSIGNED','allocation','update'),
     ('ASSIGNED','REGISTRATION_COMPLETED','cases','update'),
     ('REGISTRATION_COMPLETED','DRAFTING','filings','create'),

@@ -80,6 +80,30 @@ Open `supabase/migrations/0020_phase3_case_workflow.sql`, copy the whole file, p
 
 Do **not** run destructive SQL. Do **not** seed. Do **not** truncate.
 
+### Troubleshooting: `required_permission_for_workflow_transition` return type mismatch
+
+If you see:
+
+```text
+ERROR: 42P13: return type mismatch in function declared to return record
+DETAIL: Final statement returns too many columns.
+CONTEXT: SQL function "required_permission_for_workflow_transition"
+```
+
+Make sure your migration file has this function line:
+
+```sql
+select module_key, action from (values
+```
+
+not:
+
+```sql
+select * from (values
+```
+
+Then rerun the full Phase 3 migration SQL. The migration is additive/idempotent and can be rerun after this parse error.
+
 ## 4. Record migration history manually if using SQL Editor
 
 If you applied through SQL Editor instead of the Supabase migration API, first check whether migration history is available:
