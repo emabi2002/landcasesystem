@@ -151,11 +151,14 @@ export default function ReportsPage() {
             byPriority: {} as Record<string, number>,
           };
 
-          cases?.forEach((c: { status: string; case_type: string; region: string; priority: string }) => {
+          cases?.forEach((c) => {
+            const caseType = c.case_type || 'Unspecified';
+            const region = c.region || 'Unspecified';
+            const priority = c.priority || 'Unspecified';
             stats.byStatus[c.status] = (stats.byStatus[c.status] || 0) + 1;
-            stats.byType[c.case_type] = (stats.byType[c.case_type] || 0) + 1;
-            stats.byRegion[c.region] = (stats.byRegion[c.region] || 0) + 1;
-            stats.byPriority[c.priority] = (stats.byPriority[c.priority] || 0) + 1;
+            stats.byType[caseType] = (stats.byType[caseType] || 0) + 1;
+            stats.byRegion[region] = (stats.byRegion[region] || 0) + 1;
+            stats.byPriority[priority] = (stats.byPriority[priority] || 0) + 1;
           });
 
           if (exportFormat === 'print') {
@@ -175,7 +178,7 @@ export default function ReportsPage() {
             .order('due_date', { ascending: true });
           if (error) throw error;
 
-          const tasksWithCaseNumber = data?.map((t: { cases: { case_number: string } }) => ({
+          const tasksWithCaseNumber = data?.map((t) => ({
             ...t,
             case_number: t.cases?.case_number,
           }));
@@ -197,7 +200,7 @@ export default function ReportsPage() {
             .order('uploaded_at', { ascending: false });
           if (error) throw error;
 
-          const docsWithCaseNumber = data?.map((d: { cases: { case_number: string } }) => ({
+          const docsWithCaseNumber = data?.map((d) => ({
             ...d,
             case_number: d.cases?.case_number,
           }));

@@ -26,8 +26,8 @@ import {
 interface ExternalLawyer {
   id: string;
   name: string;
-  organization: string;
-  lawyer_type: string;
+  organization: string | null;
+  lawyer_type: string | null;
   contact_email: string | null;
   contact_phone: string | null;
   active: boolean;
@@ -213,7 +213,7 @@ export default function LawyersPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <span className="font-semibold text-slate-900">{lawyer.name}</span>
                         <Badge className={lawyer.lawyer_type === 'solicitor_general' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}>
-                          {lawyer.lawyer_type.replace('_', ' ').toUpperCase()}
+                          {(lawyer.lawyer_type || 'other').replace('_', ' ').toUpperCase()}
                         </Badge>
                         {lawyer.active && (
                           <Badge className="bg-green-100 text-green-800">ACTIVE</Badge>

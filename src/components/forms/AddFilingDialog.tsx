@@ -19,9 +19,9 @@ interface Document {
   id: string;
   title: string;
   file_url: string;
-  file_type: string;
+  file_type: string | null;
   file_size: number | null;
-  document_type: string;
+  document_type: string | null;
   uploaded_at: string;
 }
 
@@ -34,8 +34,8 @@ interface AddFilingDialogProps {
 export function AddFilingDialog({ open, onOpenChange, onSuccess }: AddFilingDialogProps) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [cases, setCases] = useState<{ id: string; case_number: string; title: string }[]>([]);
-  const [lawyers, setLawyers] = useState<{ id: string; name: string; organization: string }[]>([]);
+  const [cases, setCases] = useState<{ id: string; case_number: string; title: string | null }[]>([]);
+  const [lawyers, setLawyers] = useState<{ id: string; name: string; organization: string | null }[]>([]);
   const [caseDocuments, setCaseDocuments] = useState<Document[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>('');
@@ -307,7 +307,7 @@ export function AddFilingDialog({ open, onOpenChange, onSuccess }: AddFilingDial
               <SelectContent>
                 {cases.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
-                    {c.case_number} - {c.title}
+                    {c.case_number} - {c.title || 'No title'}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -365,7 +365,7 @@ export function AddFilingDialog({ open, onOpenChange, onSuccess }: AddFilingDial
 
                         {/* File icon */}
                         <div className="flex-shrink-0 mt-0.5">
-                          {getFileIcon(doc.file_type)}
+                          {getFileIcon(doc.file_type || '')}
                         </div>
 
                         {/* Document details */}
@@ -377,8 +377,8 @@ export function AddFilingDialog({ open, onOpenChange, onSuccess }: AddFilingDial
                             {doc.title}
                           </p>
                           <div className="flex flex-wrap items-center gap-2 mt-1">
-                            <Badge className={cn("text-xs px-1.5 py-0", getDocumentTypeBadgeColor(doc.document_type))}>
-                              {getDocumentTypeLabel(doc.document_type)}
+                            <Badge className={cn("text-xs px-1.5 py-0", getDocumentTypeBadgeColor(doc.document_type || 'other'))}>
+                              {getDocumentTypeLabel(doc.document_type || 'other')}
                             </Badge>
                             {doc.file_size && (
                               <span className="text-xs text-slate-500">
@@ -541,7 +541,7 @@ export function AddFilingDialog({ open, onOpenChange, onSuccess }: AddFilingDial
               <SelectContent>
                 {lawyers.map((lawyer) => (
                   <SelectItem key={lawyer.id} value={lawyer.id}>
-                    {lawyer.name} - {lawyer.organization}
+                    {lawyer.name} - {lawyer.organization || 'No organization'}
                   </SelectItem>
                 ))}
               </SelectContent>

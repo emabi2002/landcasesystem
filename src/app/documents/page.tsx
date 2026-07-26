@@ -65,14 +65,14 @@ interface Document {
   id: string;
   title: string;
   description: string | null;
-  document_type: string;
+  document_type: string | null;
   file_type: string | null;
   file_size: number | null;
   uploaded_at: string;
   file_url: string | null;
   storage_path: string | null;
-  case_id: string;
-  cases?: { case_number: string; title: string | null };
+  case_id: string | null;
+  cases?: { case_number: string; title: string | null } | null;
 }
 
 type TypeFilter = 'all' | string;
@@ -217,7 +217,7 @@ export default function DocumentsPage() {
       filtered = filtered.filter(d =>
         d.title.toLowerCase().includes(q) ||
         d.description?.toLowerCase().includes(q) ||
-        d.cases?.case_number.toLowerCase().includes(q)
+        d.cases?.case_number?.toLowerCase().includes(q)
       );
     }
 
@@ -382,7 +382,8 @@ export default function DocumentsPage() {
 
   // Type counts
   const typeCounts = documents.reduce((acc, doc) => {
-    acc[doc.document_type] = (acc[doc.document_type] || 0) + 1;
+    const type = doc.document_type || 'other';
+    acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
@@ -419,7 +420,7 @@ export default function DocumentsPage() {
       const exportData = filteredDocuments.map(d => ({
         'Title': d.title,
         'Description': d.description || '',
-        'Type': getDocumentTypeLabel(d.document_type),
+        'Type': getDocumentTypeLabel(d.document_type || 'other'),
         'Case': d.cases?.case_number || 'N/A',
         'File Type': d.file_type || 'N/A',
         'Size': formatFileSize(d.file_size),
@@ -449,7 +450,7 @@ export default function DocumentsPage() {
 
       const tableData = filteredDocuments.map(d => [
         d.title.substring(0, 30),
-        getDocumentTypeLabel(d.document_type),
+        getDocumentTypeLabel(d.document_type || 'other'),
         d.cases?.case_number || '-',
         d.file_type || '-',
         formatFileSize(d.file_size),
@@ -491,7 +492,7 @@ export default function DocumentsPage() {
       <h1>DLPP Legal Case Management - Documents</h1>
       <div class="meta">Generated: ${format(new Date(), 'MMM dd, yyyy HH:mm')} | Total: ${filteredDocuments.length} documents</div>
       <table><thead><tr><th>Title</th><th>Type</th><th>Case</th><th>File Type</th><th>Uploaded</th></tr></thead>
-      <tbody>${filteredDocuments.map(d => `<tr><td>${d.title}</td><td>${getDocumentTypeLabel(d.document_type)}</td><td>${d.cases?.case_number || '-'}</td><td>${d.file_type || '-'}</td><td>${format(new Date(d.uploaded_at), 'yyyy-MM-dd')}</td></tr>`).join('')}</tbody></table>
+      <tbody>${filteredDocuments.map(d => `<tr><td>${d.title}</td><td>${getDocumentTypeLabel(d.document_type || 'other')}</td><td>${d.cases?.case_number || '-'}</td><td>${d.file_type || '-'}</td><td>${format(new Date(d.uploaded_at), 'yyyy-MM-dd')}</td></tr>`).join('')}</tbody></table>
       <script>window.onload=function(){window.print()}</script></body></html>
     `);
     printWindow.document.close();
@@ -744,12 +745,12 @@ export default function DocumentsPage() {
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <Badge className={`${getDocumentTypeColor(doc.document_type)} text-xs font-medium`}>
-                            {getDocumentTypeLabel(doc.document_type)}
+                          <Badge className={`${getDocumentTypeColor(doc.document_type || 'other')} text-xs font-medium`}>
+                            {getDocumentTypeLabel(doc.document_type || 'other')}
                           </Badge>
                         </td>
                         <td className="py-3 px-4">
-                          {doc.cases ? (
+                          {doc.cases && doc.case_id ? (
                             <Link href={`/cases/${doc.case_id}`} className="text-xs font-mono hover:text-emerald-600">
                               {doc.cases.case_number}
                             </Link>

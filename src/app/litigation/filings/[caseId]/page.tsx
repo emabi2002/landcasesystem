@@ -21,12 +21,13 @@ type FilingStatus = 'draft' | 'prepared' | 'under_review' | 'changes_requested' 
 interface Filing {
   id: string;
   filing_type: string;
-  filing_title: string;
+  filing_title: string | null;
   filing_subtype: string | null;
+  title: string | null;
   description: string | null;
   draft_file_url: string | null;
-  sealed_file_url: string | null;
-  status: FilingStatus;
+  file_url: string | null;
+  status: string;
   court_filing_date: string | null;
   created_at: string;
 }
@@ -34,9 +35,9 @@ interface Filing {
 interface CaseInfo {
   id: string;
   case_number: string;
-  title: string;
+  title: string | null;
   workflow_state: string;
-  assigned_officer_id: string;
+  assigned_officer_id: string | null;
 }
 
 export default function FilingsManagementPage() {
@@ -174,7 +175,7 @@ export default function FilingsManagementPage() {
     }
   };
 
-  const getStatusBadge = (status: FilingStatus) => {
+  const getStatusBadge = (status: string) => {
     const variants: Record<FilingStatus, { className: string; icon: any }> = {
       draft: { className: 'bg-gray-100 text-gray-800', icon: FileText },
       prepared: { className: 'bg-blue-100 text-blue-800', icon: FileText },
@@ -184,7 +185,7 @@ export default function FilingsManagementPage() {
       filed: { className: 'bg-purple-100 text-purple-800', icon: CheckCircle }
     };
 
-    const variant = variants[status];
+    const variant = variants[status as FilingStatus] || variants.draft;
     const Icon = variant.icon;
 
     return (
@@ -311,8 +312,8 @@ export default function FilingsManagementPage() {
                     </div>
                     <div>
                       <div className="text-muted-foreground mb-1">Sealed Document</div>
-                      {filing.sealed_file_url ? (
-                        <a href={filing.sealed_file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                      {filing.file_url ? (
+                        <a href={filing.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                           View Sealed
                         </a>
                       ) : (
@@ -325,7 +326,7 @@ export default function FilingsManagementPage() {
                     </div>
                   </div>
 
-                  {filing.status === 'approved' && !filing.sealed_file_url && (
+                  {filing.status === 'approved' && !filing.file_url && (
                     <div className="mt-4 pt-4 border-t">
                       <Button size="sm" variant="outline">
                         <Upload className="h-4 w-4 mr-2" />

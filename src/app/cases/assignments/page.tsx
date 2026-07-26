@@ -30,9 +30,9 @@ import {
 interface PendingCase {
   id: string;
   case_number: string;
-  title: string;
-  case_type: string;
-  priority: string;
+  title: string | null;
+  case_type: string | null;
+  priority: string | null;
   status: string;
   region: string | null;
   created_at: string;
@@ -42,9 +42,9 @@ interface PendingCase {
 
 interface Officer {
   id: string;
-  email: string;
+  email: string | null;
   full_name: string | null;
-  role: string;
+  job_title: string | null;
   department: string | null;
 }
 
@@ -80,12 +80,12 @@ export default function CaseAssignmentsPage() {
 
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*')
-        .eq('is_active', true)
-        .in('role', ['action_officer_litigation_lawyer', 'senior_legal_officer_litigation', 'admin']);
+        .select('id, email, full_name, job_title, department')
+        .eq('active', true)
+        .order('full_name', { ascending: true });
 
       if (!profilesError && profiles) {
-        setOfficers(profiles as Officer[]);
+        setOfficers(profiles);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -169,7 +169,7 @@ export default function CaseAssignmentsPage() {
     const matchesSearch =
       c.case_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.case_type.toLowerCase().includes(searchTerm.toLowerCase());
+      c.case_type?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesPriority = priorityFilter === 'all' || c.priority === priorityFilter;
 
@@ -307,11 +307,11 @@ export default function CaseAssignmentsPage() {
                           <span className="font-mono text-xs text-slate-600">
                             {caseItem.case_number}
                           </span>
-                          <Badge className={getPriorityBadge(caseItem.priority)}>
-                            {caseItem.priority}
+                          <Badge className={getPriorityBadge(caseItem.priority || 'medium')}>
+                            {caseItem.priority || 'medium'}
                           </Badge>
                           <Badge variant="outline" className="capitalize text-xs">
-                            {caseItem.case_type.replace(/_/g, ' ')}
+                            {(caseItem.case_type || 'unspecified').replace(/_/g, ' ')}
                           </Badge>
                         </div>
                         <h4 className="font-medium text-slate-900 mb-1">
@@ -374,7 +374,7 @@ export default function CaseAssignmentsPage() {
                               <div className="p-4 bg-slate-50 rounded-lg">
                                 <div className="font-medium">{caseItem.title}</div>
                                 <div className="text-sm text-slate-600 mt-1">
-                                  {caseItem.case_number} • {caseItem.case_type}
+                                  {caseItem.case_number} • {caseItem.case_type || 'unspecified'}
                                 </div>
                               </div>
                               <div className="space-y-2">
@@ -388,9 +388,9 @@ export default function CaseAssignmentsPage() {
                                       <SelectItem key={officer.id} value={officer.id}>
                                         <div className="flex items-center gap-2">
                                           <User className="h-4 w-4" />
-                                          <span>{officer.full_name || officer.email}</span>
+                                          <span>{officer.full_name || officer.email || 'Unnamed officer'}</span>
                                           <span className="text-xs text-slate-500">
-                                            ({officer.role.replace(/_/g, ' ')})
+                                            ({(officer.job_title || officer.department || 'Officer').replace(/_/g, ' ')})
                                           </span>
                                         </div>
                                       </SelectItem>

@@ -78,13 +78,13 @@ import { CaseSelector } from '@/components/forms/CaseSelector';
 interface TaskType {
   id: string;
   title: string;
-  description?: string;
+  description?: string | null;
   due_date: string;
   status: string;
-  priority?: string;
-  assigned_to?: string;
-  case_id?: string;
-  cases?: { case_number: string; title: string };
+  priority?: string | null;
+  assigned_to?: string | null;
+  case_id?: string | null;
+  cases?: { case_number: string; title: string | null } | null;
 }
 
 type StatusFilter = 'all' | 'pending' | 'in_progress' | 'completed' | 'overdue';
@@ -254,8 +254,8 @@ export default function TasksPage() {
       filtered = filtered.filter(t =>
         t.title.toLowerCase().includes(q) ||
         t.description?.toLowerCase().includes(q) ||
-        t.cases?.case_number.toLowerCase().includes(q) ||
-        t.cases?.title.toLowerCase().includes(q)
+        t.cases?.case_number?.toLowerCase().includes(q) ||
+        t.cases?.title?.toLowerCase().includes(q)
       );
     }
 

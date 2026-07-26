@@ -76,9 +76,9 @@ interface EventItem {
   event_type: string;
   title: string;
   event_date: string;
-  location?: string;
-  case_id?: string;
-  cases?: { case_number: string; title: string };
+  location?: string | null;
+  case_id?: string | null;
+  cases?: { case_number: string; title: string | null } | null;
 }
 
 type EventTypeFilter = 'all' | 'hearing' | 'filing_deadline' | 'response_deadline' | 'meeting' | 'other';
@@ -207,7 +207,7 @@ export default function CalendarPage() {
       filtered = filtered.filter(e =>
         e.title.toLowerCase().includes(q) ||
         e.location?.toLowerCase().includes(q) ||
-        e.cases?.case_number.toLowerCase().includes(q)
+        e.cases?.case_number?.toLowerCase().includes(q)
       );
     }
 

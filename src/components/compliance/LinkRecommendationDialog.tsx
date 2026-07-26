@@ -28,9 +28,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 type Case = {
   id: string;
   case_number: string;
-  title: string;
+  title: string | null;
   status: string;
-  region: string;
+  region: string | null;
 };
 
 type Recommendation = {

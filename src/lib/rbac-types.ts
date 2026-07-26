@@ -4,6 +4,8 @@ export interface Group {
   id: string;
   group_name: string;
   description: string | null;
+  is_system_group?: boolean;
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -13,9 +15,12 @@ export interface Module {
   module_name: string;
   module_key: string;
   description: string | null;
-  icon: string | null;
+  category?: string | null;
   route: string | null;
+  is_active?: boolean;
+  display_order?: number;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface GroupModulePermission {
