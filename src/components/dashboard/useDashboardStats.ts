@@ -189,7 +189,7 @@ export function useDashboardStats(): DashboardStatsHook {
       try {
         const [directionsRes, delegationsRes, filingsRes, complianceRes] = await Promise.all([
           supabase.from('directions').select('case_id', { count: 'exact', head: true }),
-          supabase.from('case_delegations').select('case_id', { count: 'exact', head: true }),
+          supabase.from('case_assignments').select('case_id', { count: 'exact', head: true }),
           supabase.from('filings').select('case_id', { count: 'exact', head: true }),
           supabase.from('compliance_tracking').select('case_id', { count: 'exact', head: true }),
         ]);

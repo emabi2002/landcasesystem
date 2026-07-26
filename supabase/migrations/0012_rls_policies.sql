@@ -164,19 +164,19 @@ begin
 
     execute format('drop policy if exists %I on public.%I;', t || '_select', t);
     execute format(
-      'create policy %I on public.%I for select to authenticated using (case_id is null or public.can_access_case(case_id, ''read''));',
+      'create policy %I on public.%I for select to authenticated using (case_id is not null and public.can_access_case(case_id, ''read''));',
       t || '_select', t
     );
 
     execute format('drop policy if exists %I on public.%I;', t || '_insert', t);
     execute format(
-      'create policy %I on public.%I for insert to authenticated with check (case_id is null or public.can_access_case(case_id, ''update''));',
+      'create policy %I on public.%I for insert to authenticated with check (case_id is not null and public.can_access_case(case_id, ''update''));',
       t || '_insert', t
     );
 
     execute format('drop policy if exists %I on public.%I;', t || '_update', t);
     execute format(
-      'create policy %I on public.%I for update to authenticated using (case_id is null or public.can_access_case(case_id, ''update'')) with check (case_id is null or public.can_access_case(case_id, ''update''));',
+      'create policy %I on public.%I for update to authenticated using (case_id is not null and public.can_access_case(case_id, ''update'')) with check (case_id is not null and public.can_access_case(case_id, ''update''));',
       t || '_update', t
     );
 
@@ -247,7 +247,7 @@ create policy case_intake_documents_rw on public.case_intake_documents
 do $$
 declare
   t text;
-  cost_tables text[] := array['litigation_costs','cost_categories','litigation_cost_documents','litigation_cost_history','cost_alerts'];
+  cost_tables text[] := array['litigation_costs','cost_categories','cost_documents','litigation_cost_history','cost_alerts'];
 begin
   foreach t in array cost_tables loop
     execute format('alter table public.%I enable row level security;', t);

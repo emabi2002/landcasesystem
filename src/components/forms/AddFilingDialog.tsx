@@ -151,24 +151,21 @@ export function AddFilingDialog({ open, onOpenChange, onSuccess }: AddFilingDial
         return null;
       }
 
-      const { data: urlData } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(fileName);
-
-      // Save document record
+      // Save document record. Store the private storage path; signed URLs are generated on demand.
       await (supabase as any)
         .from('documents')
         .insert([{
           case_id: caseId,
           title: newFile.name,
-          file_url: urlData?.publicUrl,
+          file_url: fileName,
+          storage_path: fileName,
           file_type: newFile.type,
           file_size: newFile.size,
           document_type: 'filing',
           uploaded_by: userId,
         }]);
 
-      return urlData?.publicUrl || null;
+      return fileName;
     } catch (error) {
       console.error('Error uploading document:', error);
       return null;

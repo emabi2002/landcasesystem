@@ -93,7 +93,7 @@ for each row execute function public.set_updated_at();
 
 create table if not exists public.communications (
   id uuid primary key default gen_random_uuid(),
-  case_id uuid not null references public.cases(id) on delete cascade,
+  case_id uuid not null references public.cases(id) on delete restrict,
   communication_type text not null,
   direction text not null,
   party_type text not null,
@@ -115,7 +115,7 @@ create index if not exists communications_case_idx on public.communications (cas
 
 create table if not exists public.file_requests (
   id uuid primary key default gen_random_uuid(),
-  case_id uuid not null references public.cases(id) on delete cascade,
+  case_id uuid not null references public.cases(id) on delete restrict,
   file_type text not null,
   file_number text,
   requested_by uuid references public.profiles(id) on delete set null,
@@ -136,7 +136,7 @@ for each row execute function public.set_updated_at();
 
 create table if not exists public.filings (
   id uuid primary key default gen_random_uuid(),
-  case_id uuid not null references public.cases(id) on delete cascade,
+  case_id uuid not null references public.cases(id) on delete restrict,
   filing_type text not null,
   filing_title text,
   title text,
@@ -169,7 +169,7 @@ for each row execute function public.set_updated_at();
 
 create table if not exists public.court_orders (
   id uuid primary key default gen_random_uuid(),
-  case_id uuid not null references public.cases(id) on delete cascade,
+  case_id uuid not null references public.cases(id) on delete restrict,
   order_type text,
   order_reference text,
   order_date date,
@@ -190,7 +190,7 @@ for each row execute function public.set_updated_at();
 
 create table if not exists public.compliance_tracking (
   id uuid primary key default gen_random_uuid(),
-  case_id uuid not null references public.cases(id) on delete cascade,
+  case_id uuid not null references public.cases(id) on delete restrict,
   court_order_reference text,
   court_order_date date,
   court_order_description text not null,
@@ -214,7 +214,7 @@ for each row execute function public.set_updated_at();
 
 create table if not exists public.recommendation_links (
   id uuid primary key default gen_random_uuid(),
-  legal_case_id uuid not null references public.cases(id) on delete cascade,
+  legal_case_id uuid not null references public.cases(id) on delete restrict,
   recommendation_id text not null,
   link_type text not null default 'supporting_reference',
   link_context text,

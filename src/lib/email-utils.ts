@@ -1,5 +1,3 @@
-import { supabase } from './supabase';
-
 interface EmailRecipient {
   email: string;
   name?: string;
@@ -21,33 +19,17 @@ interface SendEmailParams {
   caseId?: string;
 }
 
-// Queue email for sending
-export async function queueEmail(params: SendEmailParams): Promise<{ success: boolean; error?: string }> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
+// Email delivery is deferred to a later phase. Phase 2 does not define a canonical
+// email_queue table, so this helper must not write to a non-existent table.
+export async function queueEmail(_params: SendEmailParams): Promise<{ success: boolean; error?: string }> {
+  const message = 'Email delivery is deferred pending the Phase 3 notification/email worker.';
+  console.warn(message);
+  return { success: false, error: message };
+}
 
-    const { error } = await supabase.from('email_queue').insert([
-      {
-        to_email: params.to.email,
-        to_name: params.to.name,
-        cc_emails: params.cc?.map(c => c.email),
-        subject: params.subject,
-        body_html: params.bodyHtml,
-        body_text: params.bodyText || stripHtml(params.bodyHtml),
-        attachments: params.attachments || [],
-        case_id: params.caseId,
-        created_by: user?.id,
-        status: 'pending',
-      } as never,
-    ]);
-
-    if (error) throw error;
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error queuing email:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-  }
+function getAppLink(path: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '');
+  return baseUrl ? `${baseUrl}${path}` : path;
 }
 
 // Generate case assignment email
@@ -90,7 +72,7 @@ export function generateCaseAssignmentEmail(
 
         <p>Please log in to the system to review the case details and take necessary action.</p>
 
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/cases" class="button">
+        <a href="${getAppLink('/cases')}" class="button">
           View Case
         </a>
 

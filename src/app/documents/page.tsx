@@ -70,7 +70,7 @@ interface Document {
   file_size: number | null;
   uploaded_at: string;
   file_url: string | null;
-  file_path: string | null;
+  storage_path: string | null;
   case_id: string;
   cases?: { case_number: string; title: string | null };
 }
@@ -283,9 +283,9 @@ export default function DocumentsPage() {
   const handleDeleteDocument = async (doc: Document) => {
     try {
       setDeletingDocId(doc.id);
-      // Delete from storage if file_path exists
-      if (doc.file_path) {
-        await supabase.storage.from('case-documents').remove([doc.file_path]);
+      // Delete from storage if storage_path exists
+      if (doc.storage_path) {
+        await supabase.storage.from('case-documents').remove([doc.storage_path]);
       }
       const { error } = await supabase.from('documents').delete().eq('id', doc.id);
       if (error) throw error;
@@ -309,9 +309,9 @@ export default function DocumentsPage() {
     setBulkDeleting(true);
     try {
       // Delete files from storage first
-      const docsToDelete = documents.filter(d => selectedIds.has(d.id) && d.file_path);
+      const docsToDelete = documents.filter(d => selectedIds.has(d.id) && d.storage_path);
       if (docsToDelete.length > 0) {
-        await supabase.storage.from('case-documents').remove(docsToDelete.map(d => d.file_path!));
+        await supabase.storage.from('case-documents').remove(docsToDelete.map(d => d.storage_path!));
       }
 
       const { error } = await supabase.from('documents').delete().in('id', Array.from(selectedIds));
@@ -328,14 +328,17 @@ export default function DocumentsPage() {
   };
 
   const handleDownload = async (doc: Document) => {
-    if (doc.file_path) {
-      const { data } = supabase.storage.from('case-documents').getPublicUrl(doc.file_path);
-      if (data?.publicUrl) {
-        window.open(data.publicUrl, '_blank');
+    const storagePath = doc.storage_path || doc.file_url;
+    if (storagePath) {
+      const { data, error } = await supabase.storage.from('case-documents').createSignedUrl(storagePath, 60 * 5);
+      if (error) {
+        toast.error('Failed to create secure download link');
+        return;
+      }
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
         toast.success('Opening document...');
       }
-    } else if (doc.file_url) {
-      window.open(doc.file_url, '_blank');
     } else {
       toast.error('No file available');
     }

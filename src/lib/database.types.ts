@@ -121,7 +121,7 @@ export interface Database {
           updated_at?: string
         }
       }
-      case_delegations: {
+      case_assignments: {
         Row: {
           id: string
           case_id: string
@@ -405,7 +405,7 @@ export interface Database {
           description: string | null
           file_url: string | null
           file_type: string | null
-          file_path: string | null
+          storage_path: string | null
           uploaded_at: string
           uploaded_by: string | null
         }
@@ -416,7 +416,7 @@ export interface Database {
           description?: string | null
           file_url?: string | null
           file_type?: string | null
-          file_path?: string | null
+          storage_path?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -427,7 +427,7 @@ export interface Database {
           description?: string | null
           file_url?: string | null
           file_type?: string | null
-          file_path?: string | null
+          storage_path?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -489,7 +489,7 @@ export interface Database {
 export interface LitigationDatabase extends Database {
   public: Database['public'] & {
     Tables: Database['public']['Tables'] & {
-      case_delegations: {
+      case_assignments: {
         Row: {
           id: string
           case_id: string
@@ -723,7 +723,7 @@ export interface LitigationDatabase extends Database {
 }
 
 // Helper types for new tables
-export type CaseDelegation = LitigationDatabase['public']['Tables']['case_delegations']['Row']
+export type CaseDelegation = LitigationDatabase['public']['Tables']['case_assignments']['Row']
 export type Filing = LitigationDatabase['public']['Tables']['filings']['Row']
 export type FilingReview = LitigationDatabase['public']['Tables']['filing_reviews']['Row']
 export type CaseProgressUpdate = LitigationDatabase['public']['Tables']['case_progress_updates']['Row']

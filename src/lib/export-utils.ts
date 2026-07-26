@@ -3,10 +3,10 @@ import { format } from 'date-fns';
 // Convert data to CSV format
 export function convertToCSV(data: Record<string, unknown>[], headers: string[]): string {
   const csvRows = [];
-  
+
   // Add headers
   csvRows.push(headers.join(','));
-  
+
   // Add data rows
   for (const row of data) {
     const values = headers.map(header => {
@@ -18,7 +18,7 @@ export function convertToCSV(data: Record<string, unknown>[], headers: string[])
     });
     csvRows.push(values.join(','));
   }
-  
+
   return csvRows.join('\n');
 }
 
@@ -48,7 +48,7 @@ export function exportCaseDataAsCSV(caseData: {
 }, parties: unknown[], tasks: unknown[], events: unknown[], landParcels: unknown[]) {
   const timestamp = format(new Date(), 'yyyy-MM-dd-HHmmss');
   const caseNumber = caseData.case_number.replace(/[^a-zA-Z0-9]/g, '-');
-  
+
   // Export parties
   if (parties.length > 0) {
     const partiesCSV = convertToCSV(
@@ -57,7 +57,7 @@ export function exportCaseDataAsCSV(caseData: {
     );
     downloadFile(partiesCSV, `${caseNumber}-parties-${timestamp}.csv`, 'text/csv');
   }
-  
+
   // Export tasks
   if (tasks.length > 0) {
     const tasksCSV = convertToCSV(
@@ -66,7 +66,7 @@ export function exportCaseDataAsCSV(caseData: {
     );
     downloadFile(tasksCSV, `${caseNumber}-tasks-${timestamp}.csv`, 'text/csv');
   }
-  
+
   // Export events
   if (events.length > 0) {
     const eventsCSV = convertToCSV(
@@ -75,7 +75,7 @@ export function exportCaseDataAsCSV(caseData: {
     );
     downloadFile(eventsCSV, `${caseNumber}-events-${timestamp}.csv`, 'text/csv');
   }
-  
+
   // Export land parcels
   if (landParcels.length > 0) {
     const parcelsCSV = convertToCSV(
@@ -101,30 +101,30 @@ export function exportCaseDataAsJSON(
     tasks,
     events,
     documents: documents.map((doc: unknown) => {
-      // Remove file_path from export for security
-      const { file_path, ...rest } = doc as Record<string, unknown>;
+      // Remove storage_path from export for security
+      const { storage_path, ...rest } = doc as Record<string, unknown>;
       return rest;
     }),
     landParcels,
     exportedAt: new Date().toISOString(),
   };
-  
+
   const jsonContent = JSON.stringify(fullData, null, 2);
   const caseNumber = (caseData as { case_number: string }).case_number.replace(/[^a-zA-Z0-9]/g, '-');
   const timestamp = format(new Date(), 'yyyy-MM-dd-HHmmss');
-  
+
   downloadFile(jsonContent, `${caseNumber}-full-export-${timestamp}.json`, 'application/json');
 }
 
 // Export documents list as CSV
 export function exportDocumentsAsCSV(documents: unknown[]) {
   if (documents.length === 0) return;
-  
+
   const docsCSV = convertToCSV(
     documents as Record<string, unknown>[],
     ['title', 'description', 'file_type', 'uploaded_at']
   );
-  
+
   const timestamp = format(new Date(), 'yyyy-MM-dd-HHmmss');
   downloadFile(docsCSV, `documents-list-${timestamp}.csv`, 'text/csv');
 }

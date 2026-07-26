@@ -74,7 +74,7 @@ insert into public.group_module_permissions (
 select g.id, m.id, true, true, true, false, true, false, false
 from public.groups g
 join public.modules m on m.module_key in (
-  'dashboard','cases','tasks','events','calendar','documents','communications',
+  'dashboard','cases','tasks','calendar','documents','communications',
   'directions','file_requests','filings','compliance','notifications'
 )
 where g.group_name = 'Case Officer'

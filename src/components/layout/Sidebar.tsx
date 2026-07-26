@@ -216,6 +216,11 @@ const navigationGroups: NavGroup[] = [
 ];
 
 const SIDEBAR_OPEN_GROUPS_KEY = 'sidebar_open_groups';
+const SIDEBAR_MODULE_CACHE_KEY = 'sidebar_readable_modules';
+
+const ALL_NAV_MODULE_KEYS = new Set(
+  navigationGroups.flatMap((group) => group.items.map((item) => item.moduleKey).filter(Boolean) as string[]),
+);
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -231,8 +236,19 @@ export function Sidebar({
   onMobileClose,
 }: SidebarProps) {
   const pathname = usePathname();
-  const [loadingPermissions, setLoadingPermissions] = useState(true);
-  const [allowedModules, setAllowedModules] = useState<Set<string>>(new Set());
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
+  const [allowedModules, setAllowedModules] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set(ALL_NAV_MODULE_KEYS);
+    try {
+      const cached = sessionStorage.getItem(SIDEBAR_MODULE_CACHE_KEY);
+      if (!cached) return new Set(ALL_NAV_MODULE_KEYS);
+      const parsed = JSON.parse(cached);
+      const keys = Array.isArray(parsed) ? parsed.filter((key) => typeof key === 'string') : [];
+      return keys.length > 0 ? new Set(keys) : new Set(ALL_NAV_MODULE_KEYS);
+    } catch {
+      return new Set(ALL_NAV_MODULE_KEYS);
+    }
+  });
 
   // Initialize open groups from localStorage or defaults
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
@@ -296,25 +312,14 @@ export function Sidebar({
 
         const moduleKeys = await getReadableModuleKeys();
 
-        console.log('📊 User Permissions Loaded:', {
-          moduleCount: moduleKeys.length,
-          modules: moduleKeys,
-          timestamp: new Date().toISOString()
-        });
-
-        // CRITICAL: Only show modules user actually has permission for
-        const modules = new Set(moduleKeys);
-
-        // If no permissions returned, show NO modules (not everything!)
-        if (moduleKeys.length === 0) {
-          console.warn('⚠️ No permissions found for user - showing empty sidebar');
+        // Keep the current/sidebar-cached menu stable if the permission RPC briefly returns empty during navigation.
+        if (moduleKeys.length > 0) {
+          sessionStorage.setItem(SIDEBAR_MODULE_CACHE_KEY, JSON.stringify(moduleKeys));
+          setAllowedModules(new Set(moduleKeys));
         }
-
-        setAllowedModules(modules);
       } catch (error) {
-        console.error('❌ Error loading permissions:', error);
-        // On error, show empty set (no modules) - SAFER than showing everything
-        setAllowedModules(new Set());
+        console.error('Error loading permissions:', error);
+        // Keep the previous menu visible on transient permission-loading errors.
       } finally {
         setLoadingPermissions(false);
       }
@@ -359,35 +364,6 @@ export function Sidebar({
     }))
     .filter((group) => group.items.length > 0);
 
-  if (loadingPermissions) {
-    return (
-      <aside
-        className={cn(
-          'fixed left-0 top-0 z-40 h-screen bg-slate-900 text-white transition-all duration-300',
-          collapsed ? 'w-16' : 'w-64',
-          'lg:translate-x-0',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        )}
-      >
-        <div className="flex h-16 items-center justify-center border-b border-slate-700 px-4">
-          <img
-            src="/dlpp-logo.svg"
-            alt="DLPP Logo"
-            className={cn('transition-all duration-300', collapsed ? 'h-8' : 'h-10')}
-          />
-          {!collapsed && (
-            <div className="ml-3">
-              <div className="text-sm font-semibold">DLPP Legal CMS</div>
-              <div className="text-xs text-slate-400">Dept. of Lands</div>
-            </div>
-          )}
-        </div>
-
-        <div className="p-4 text-sm text-slate-400">Loading menu...</div>
-      </aside>
-    );
-  }
-
   return (
     <>
       {mobileOpen && (
@@ -414,7 +390,9 @@ export function Sidebar({
           {!collapsed && (
             <div className="ml-3">
               <div className="text-sm font-semibold">DLPP Legal CMS</div>
-              <div className="text-xs text-slate-400">Dept. of Lands</div>
+              <div className="text-xs text-slate-400">
+                {loadingPermissions ? 'Refreshing access...' : 'Dept. of Lands'}
+              </div>
             </div>
           )}
         </div>

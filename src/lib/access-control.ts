@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-export type UserRole = 'executive' | 'manager' | 'lawyer' | 'officer' | 'admin';
+export type UserRole = 'canonical-rbac';
 
 export interface RolePermissions {
   canAccessReception: boolean;
@@ -17,200 +17,98 @@ export interface RolePermissions {
   canCreateCase: boolean;
 }
 
-const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
-  executive: {
-    canAccessReception: false,
-    canAccessDirections: true,
-    canCommentDirections: true,
-    canAccessRegistration: false,
-    canAccessOfficerActions: false,
-    canAccessExternalFilings: false,
-    canAccessCompliance: false,
-    canAccessClosure: false,
-    canAccessPartiesLawyers: false,
-    canAccessAdmin: false,
-    canViewAllCases: true,
-    canCreateCase: false,
-  },
-  manager: {
-    canAccessReception: true,
-    canAccessDirections: true,
-    canCommentDirections: true,
-    canAccessRegistration: true,
-    canAccessOfficerActions: true,
-    canAccessExternalFilings: true,
-    canAccessCompliance: true,
-    canAccessClosure: true,
-    canAccessPartiesLawyers: true,
-    canAccessAdmin: false,
-    canViewAllCases: true,
-    canCreateCase: true,
-  },
-  lawyer: {
-    canAccessReception: false,
-    canAccessDirections: false,
-    canCommentDirections: false,
-    canAccessRegistration: true,
-    canAccessOfficerActions: true,
-    canAccessExternalFilings: true,
-    canAccessCompliance: true,
-    canAccessClosure: true,
-    canAccessPartiesLawyers: true,
-    canAccessAdmin: false,
-    canViewAllCases: true,
-    canCreateCase: true,
-  },
-  officer: {
-    canAccessReception: true,
-    canAccessDirections: false,
-    canCommentDirections: false,
-    canAccessRegistration: false,
-    canAccessOfficerActions: false,
-    canAccessExternalFilings: false,
-    canAccessCompliance: false,
-    canAccessClosure: false,
-    canAccessPartiesLawyers: false,
-    canAccessAdmin: false,
-    canViewAllCases: true,
-    canCreateCase: true,
-  },
-  admin: {
-    canAccessReception: true,
-    canAccessDirections: true,
-    canCommentDirections: true,
-    canAccessRegistration: true,
-    canAccessOfficerActions: true,
-    canAccessExternalFilings: true,
-    canAccessCompliance: true,
-    canAccessClosure: true,
-    canAccessPartiesLawyers: true,
-    canAccessAdmin: true,
-    canViewAllCases: true,
-    canCreateCase: true,
-  },
+const MODULE_PERMISSION_MAP: Record<keyof RolePermissions, { module: string; action: string }> = {
+  canAccessReception: { module: 'correspondence', action: 'read' },
+  canAccessDirections: { module: 'directions', action: 'read' },
+  canCommentDirections: { module: 'directions', action: 'update' },
+  canAccessRegistration: { module: 'cases', action: 'create' },
+  canAccessOfficerActions: { module: 'allocation', action: 'update' },
+  canAccessExternalFilings: { module: 'filings', action: 'read' },
+  canAccessCompliance: { module: 'compliance', action: 'read' },
+  canAccessClosure: { module: 'cases', action: 'update' },
+  canAccessPartiesLawyers: { module: 'lawyers', action: 'read' },
+  canAccessAdmin: { module: 'admin', action: 'read' },
+  canViewAllCases: { module: 'cases', action: 'read' },
+  canCreateCase: { module: 'cases', action: 'create' },
 };
 
-export async function getCurrentUserRole(): Promise<UserRole | null> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+const MODULE_ACCESS_MAP: Record<string, keyof RolePermissions> = {
+  reception: 'canAccessReception',
+  directions: 'canAccessDirections',
+  registration: 'canAccessRegistration',
+  'register-correspondence': 'canAccessRegistration',
+  'create-files': 'canAccessRegistration',
+  delegate: 'canAccessOfficerActions',
+  'officer-actions': 'canAccessOfficerActions',
+  'external-filings': 'canAccessExternalFilings',
+  compliance: 'canAccessCompliance',
+  closure: 'canAccessClosure',
+  'parties-lawyers': 'canAccessPartiesLawyers',
+  admin: 'canAccessAdmin',
+};
 
-    const { data: userData } = await (supabase as any)
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+async function hasPermission(module: string, action: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
 
-    return ((userData as any)?.role as UserRole) || 'officer';
-  } catch (error) {
-    console.error('Error getting user role:', error);
-    return null;
+  const { data, error } = await (supabase as any).rpc('user_has_permission', {
+    p_user_id: user.id,
+    p_module_key: module,
+    p_action: action,
+  });
+
+  if (error) {
+    console.error('Canonical permission check failed:', error);
+    return false;
   }
+
+  return data === true;
+}
+
+export async function getCurrentUserRole(): Promise<UserRole | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user ? 'canonical-rbac' : null;
 }
 
 export async function getUserPermissions(): Promise<RolePermissions | null> {
   const role = await getCurrentUserRole();
   if (!role) return null;
 
-  return ROLE_PERMISSIONS[role];
+  const entries = await Promise.all(
+    (Object.keys(MODULE_PERMISSION_MAP) as Array<keyof RolePermissions>).map(async (key) => {
+      const permission = MODULE_PERMISSION_MAP[key];
+      return [key, await hasPermission(permission.module, permission.action)] as const;
+    }),
+  );
+
+  return Object.fromEntries(entries) as unknown as RolePermissions;
 }
 
 export async function checkAccess(requiredPermission: keyof RolePermissions): Promise<boolean> {
-  const permissions = await getUserPermissions();
-  if (!permissions) return false;
-
-  return permissions[requiredPermission];
+  const permission = MODULE_PERMISSION_MAP[requiredPermission];
+  if (!permission) return false;
+  return hasPermission(permission.module, permission.action);
 }
 
 export async function checkModuleAccess(module: string): Promise<{
   allowed: boolean;
   reason?: string;
 }> {
-  const role = await getCurrentUserRole();
-  if (!role) {
-    return { allowed: false, reason: 'User not authenticated' };
-  }
-
-  const permissions = ROLE_PERMISSIONS[role];
-
-  const modulePermissions: Record<string, keyof RolePermissions> = {
-    reception: 'canAccessReception',
-    directions: 'canAccessDirections',
-    registration: 'canAccessRegistration',
-    'register-correspondence': 'canAccessRegistration',
-    'create-files': 'canAccessRegistration',
-    delegate: 'canAccessRegistration',
-    'officer-actions': 'canAccessOfficerActions',
-    'external-filings': 'canAccessExternalFilings',
-    compliance: 'canAccessCompliance',
-    closure: 'canAccessClosure',
-    'parties-lawyers': 'canAccessPartiesLawyers',
-    admin: 'canAccessAdmin',
-  };
-
-  const permissionKey = modulePermissions[module];
+  const permissionKey = MODULE_ACCESS_MAP[module];
   if (!permissionKey) {
     return { allowed: false, reason: 'Invalid module' };
   }
 
-  if (!permissions[permissionKey]) {
-    return {
-      allowed: false,
-      reason: `Your role (${getRoleName(role)}) does not have access to this module`,
-    };
-  }
-
-  return { allowed: true };
+  const allowed = await checkAccess(permissionKey);
+  return allowed
+    ? { allowed: true }
+    : { allowed: false, reason: 'You do not have the required module permission.' };
 }
 
-export function getRoleName(role: UserRole): string {
-  const roleNames: Record<UserRole, string> = {
-    executive: 'Executive Management',
-    manager: 'Manager',
-    lawyer: 'Lawyer / Legal Officer',
-    officer: 'Officer / Registry Clerk',
-    admin: 'System Administrator',
-  };
-
-  return roleNames[role] || role;
+export function getRoleName(_role: UserRole): string {
+  return 'Canonical RBAC user';
 }
 
-export function getRoleColor(role: UserRole): string {
-  const colors: Record<UserRole, string> = {
-    executive: 'bg-purple-100 text-purple-800 border-purple-300',
-    manager: 'bg-blue-100 text-blue-800 border-blue-300',
-    lawyer: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-    officer: 'bg-amber-100 text-amber-800 border-amber-300',
-    admin: 'bg-red-100 text-red-800 border-red-300',
-  };
-
-  return colors[role] || 'bg-slate-100 text-slate-800 border-slate-300';
+export function getRoleColor(_role: UserRole): string {
+  return 'bg-slate-100 text-slate-800 border-slate-300';
 }
-
-export const ROLES = {
-  executive: {
-    name: 'Executive Management',
-    description: 'See dashboard and comment on directions (Step 2)',
-    permissions: ROLE_PERMISSIONS.executive,
-  },
-  manager: {
-    name: 'Manager',
-    description: 'Full access to all modules',
-    permissions: ROLE_PERMISSIONS.manager,
-  },
-  lawyer: {
-    name: 'Lawyer / Legal Officer',
-    description: 'Step 3 through case closure',
-    permissions: ROLE_PERMISSIONS.lawyer,
-  },
-  officer: {
-    name: 'Officer / Registry Clerk',
-    description: 'Step 1 - Document reception only',
-    permissions: ROLE_PERMISSIONS.officer,
-  },
-  admin: {
-    name: 'System Administrator',
-    description: 'Full system access + user management',
-    permissions: ROLE_PERMISSIONS.admin,
-  },
-};

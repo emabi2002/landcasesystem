@@ -89,16 +89,16 @@ begin
   if v_result is not true then raise exception 'TEST 5 FAILED: additive permission should grant cases.update'; end if;
 
   -- TEST 6: audit_logs are append-only (update blocked).
-  insert into public.audit_logs (action) values ('TEST_action');
+  -- The TEST_audit_append_only row is intentionally left in place because audit logs cannot be deleted.
+  insert into public.audit_logs (action) values ('TEST_audit_append_only');
   begin
-    update public.audit_logs set action = 'changed' where action = 'TEST_action';
+    update public.audit_logs set action = 'changed' where action = 'TEST_audit_append_only';
     raise exception 'TEST 6 FAILED: audit_logs update should be blocked';
   exception when others then
     null; -- expected
   end;
 
-  -- Cleanup test fixtures.
-  delete from public.audit_logs where action = 'TEST_action';
+  -- Cleanup test fixtures. Do not delete audit_logs; they are append-only by design.
   delete from public.user_groups where user_id in (v_user_admin, v_user_officer);
   delete from public.group_module_permissions where group_id in (v_group_admin, v_group_officer, v_group_expired);
   delete from public.groups where id in (v_group_admin, v_group_officer, v_group_expired);

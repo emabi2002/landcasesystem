@@ -12,7 +12,6 @@ import {
   Loader2,
   Trash2,
   Download,
-  Eye,
   Paperclip,
   X
 } from 'lucide-react';
@@ -23,7 +22,7 @@ interface CostDocument {
   cost_id: string;
   document_name: string;
   document_type: string;
-  file_path: string;
+  file_url: string;
   file_size: number;
   uploaded_at: string;
   uploaded_by: string | null;
@@ -78,17 +77,13 @@ export function CostDocumentManager({ costId, costType, onDocumentChange }: Cost
       const { data: { user } } = await supabase.auth.getUser();
 
       // Upload file to storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${costId}/${Date.now()}.${fileExt}`;
+      const fileName = `cost-docs/${costId}/${Date.now()}-${file.name}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('cost-documents')
+        .from('case-documents')
         .upload(fileName, file);
 
-      if (uploadError) {
-        // If bucket doesn't exist, try creating document record anyway
-        console.warn('Storage upload failed, creating document record only');
-      }
+      if (uploadError) throw uploadError;
 
       // Create document record
       const { error: insertError } = await (supabase as any)
@@ -97,8 +92,9 @@ export function CostDocumentManager({ costId, costType, onDocumentChange }: Cost
           cost_id: costId,
           document_name: file.name,
           document_type: file.type || 'application/octet-stream',
-          file_path: fileName,
+          file_url: fileName,
           file_size: file.size,
+          mime_type: file.type || 'application/octet-stream',
           uploaded_by: user?.id || null,
         });
 
@@ -122,8 +118,8 @@ export function CostDocumentManager({ costId, costType, onDocumentChange }: Cost
     try {
       // Delete from storage
       await supabase.storage
-        .from('cost-documents')
-        .remove([doc.file_path]);
+        .from('case-documents')
+        .remove([doc.file_url]);
 
       // Delete record
       const { error } = await (supabase as any)
@@ -143,12 +139,13 @@ export function CostDocumentManager({ costId, costType, onDocumentChange }: Cost
 
   async function handleDownload(doc: CostDocument) {
     try {
-      const { data } = supabase.storage
-        .from('cost-documents')
-        .getPublicUrl(doc.file_path);
+      const { data, error: signedUrlError } = await supabase.storage
+        .from('case-documents')
+        .createSignedUrl(doc.file_url, 60 * 5);
 
-      if (data?.publicUrl) {
-        window.open(data.publicUrl, '_blank');
+      if (signedUrlError) throw signedUrlError;
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
       }
     } catch (err) {
       console.error('Error downloading document:', err);
@@ -163,11 +160,12 @@ export function CostDocumentManager({ costId, costType, onDocumentChange }: Cost
   }
 
   function getFileIcon(type: string) {
-    if (type.includes('pdf')) return '📄';
-    if (type.includes('image')) return '🖼️';
-    if (type.includes('word') || type.includes('doc')) return '📝';
-    if (type.includes('excel') || type.includes('sheet')) return '📊';
-    return '📎';
+    const normalized = type.toLowerCase();
+    if (normalized.includes('pdf')) return <FileText className="h-5 w-5 text-red-600" />;
+    if (normalized.includes('image')) return <FileText className="h-5 w-5 text-emerald-600" />;
+    if (normalized.includes('word') || normalized.includes('doc')) return <FileText className="h-5 w-5 text-sky-700" />;
+    if (normalized.includes('excel') || normalized.includes('sheet')) return <FileText className="h-5 w-5 text-green-700" />;
+    return <FileText className="h-5 w-5 text-gray-500" />;
   }
 
   return (

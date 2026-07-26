@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { HelpProvider, HelpButton, HelpDrawer, WelcomeTour } from "@/components/help";
+import { HelpProvider, HelpButton, HelpDrawer } from "@/components/help";
 
 export default function ClientBody({
   children,
@@ -20,7 +20,6 @@ export default function ClientBody({
         {children}
         <HelpButton />
         <HelpDrawer />
-        <WelcomeTour />
       </HelpProvider>
     </div>
   );

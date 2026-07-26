@@ -128,24 +128,21 @@ export function AddCommunicationDialog({ open, onOpenChange, onSuccess }: AddCom
         return null;
       }
 
-      const { data: urlData } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(fileName);
-
-      // Save document record
+      // Save document record. Store the private storage path; signed URLs are generated on demand.
       await (supabase as any)
         .from('documents')
         .insert([{
           case_id: caseId,
           title: attachedFile.name,
-          file_url: urlData?.publicUrl,
+          file_url: fileName,
+          storage_path: fileName,
           file_type: attachedFile.type,
           file_size: attachedFile.size,
           document_type: 'correspondence',
           uploaded_by: userId,
         }]);
 
-      return urlData?.publicUrl || null;
+      return fileName;
     } catch (error) {
       console.error('Error uploading attachment:', error);
       return null;

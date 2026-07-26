@@ -21,7 +21,8 @@ interface CaseDocument {
   id: string;
   title: string;
   description: string | null;
-  file_path: string | null;
+  storage_path: string | null;
+  file_url: string | null;
   file_type: string | null;
   uploaded_at: string;
   uploaded_by: string;
@@ -296,13 +297,18 @@ export default function CorrespondencePage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              if (doc.file_path) {
-                                const { data } = supabase.storage
+                            onClick={async () => {
+                              const storagePath = doc.storage_path || doc.file_url;
+                              if (storagePath) {
+                                const { data, error } = await supabase.storage
                                   .from('case-documents')
-                                  .getPublicUrl(doc.file_path);
-                                if (data?.publicUrl) {
-                                  window.open(data.publicUrl, '_blank');
+                                  .createSignedUrl(storagePath, 60 * 5);
+                                if (error) {
+                                  toast.error('Failed to create secure document link');
+                                  return;
+                                }
+                                if (data?.signedUrl) {
+                                  window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
                                 }
                               }
                             }}
@@ -313,13 +319,18 @@ export default function CorrespondencePage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              if (doc.file_path) {
-                                const { data } = supabase.storage
+                            onClick={async () => {
+                              const storagePath = doc.storage_path || doc.file_url;
+                              if (storagePath) {
+                                const { data, error } = await supabase.storage
                                   .from('case-documents')
-                                  .getPublicUrl(doc.file_path);
-                                if (data?.publicUrl) {
-                                  window.open(data.publicUrl, '_blank');
+                                  .createSignedUrl(storagePath, 60 * 5);
+                                if (error) {
+                                  toast.error('Failed to create secure download link');
+                                  return;
+                                }
+                                if (data?.signedUrl) {
+                                  window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
                                   toast.success('Opening document...');
                                 }
                               }
@@ -331,13 +342,18 @@ export default function CorrespondencePage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              if (doc.file_path) {
-                                const { data } = supabase.storage
+                            onClick={async () => {
+                              const storagePath = doc.storage_path || doc.file_url;
+                              if (storagePath) {
+                                const { data, error } = await supabase.storage
                                   .from('case-documents')
-                                  .getPublicUrl(doc.file_path);
-                                if (data?.publicUrl) {
-                                  const printWindow = window.open(data.publicUrl, '_blank');
+                                  .createSignedUrl(storagePath, 60 * 5);
+                                if (error) {
+                                  toast.error('Failed to create secure print link');
+                                  return;
+                                }
+                                if (data?.signedUrl) {
+                                  const printWindow = window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
                                   if (printWindow) {
                                     printWindow.onload = () => {
                                       printWindow.print();

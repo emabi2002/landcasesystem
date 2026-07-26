@@ -101,7 +101,8 @@ interface DocumentItem {
   description?: string | null;
   uploaded_at: string;
   file_type?: string | null;
-  file_path?: string | null;
+  storage_path?: string | null;
+  file_url?: string | null;
 }
 
 interface TaskItem {
@@ -915,12 +916,17 @@ export default function CaseDetailPage() {
                             variant="outline"
                             size="sm"
                             onClick={async () => {
-                              if (doc.file_path) {
-                                const { data } = supabase.storage
+                              const storagePath = doc.storage_path || doc.file_url;
+                              if (storagePath) {
+                                const { data, error } = await supabase.storage
                                   .from('case-documents')
-                                  .getPublicUrl(doc.file_path);
-                                if (data?.publicUrl) {
-                                  window.open(data.publicUrl, '_blank');
+                                  .createSignedUrl(storagePath, 60 * 5);
+                                if (error) {
+                                  toast.error('Failed to create secure download link');
+                                  return;
+                                }
+                                if (data?.signedUrl) {
+                                  window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
                                   toast.success('Opening document...');
                                 }
                               }
@@ -935,12 +941,17 @@ export default function CaseDetailPage() {
                             variant="outline"
                             size="sm"
                             onClick={async () => {
-                              if (doc.file_path) {
-                                const { data } = supabase.storage
+                              const storagePath = doc.storage_path || doc.file_url;
+                              if (storagePath) {
+                                const { data, error } = await supabase.storage
                                   .from('case-documents')
-                                  .getPublicUrl(doc.file_path);
-                                if (data?.publicUrl) {
-                                  const printWindow = window.open(data.publicUrl, '_blank');
+                                  .createSignedUrl(storagePath, 60 * 5);
+                                if (error) {
+                                  toast.error('Failed to create secure print link');
+                                  return;
+                                }
+                                if (data?.signedUrl) {
+                                  const printWindow = window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
                                   if (printWindow) {
                                     printWindow.onload = () => {
                                       printWindow.print();
@@ -978,10 +989,11 @@ export default function CaseDetailPage() {
                               if (confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
                                 try {
                                   // Delete from storage
-                                  if (doc.file_path) {
+                                  const storagePath = doc.storage_path || doc.file_url;
+                                  if (storagePath) {
                                     await supabase.storage
                                       .from('case-documents')
-                                      .remove([doc.file_path]);
+                                      .remove([storagePath]);
                                   }
                                   // Delete from database
                                   const { error } = await (supabase as any)
