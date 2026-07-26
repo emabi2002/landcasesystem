@@ -6,7 +6,7 @@ Use this guide only for **staging/local first**. Do not run Phase 3 SQL on produ
 
 Before running anything, confirm the Supabase project is the intended staging/local database, not live UAT.
 
-Run:
+Run this safe confirmation query first:
 
 ```sql
 select
@@ -14,25 +14,65 @@ select
   now() as checked_at,
   (select count(*) from auth.users) as auth_users,
   (select count(*) from public.cases) as cases,
-  (select max(version) from supabase_migrations.schema_migrations) as latest_migration;
+  exists (
+    select 1
+    from information_schema.tables
+    where table_schema = 'supabase_migrations'
+      and table_name = 'schema_migrations'
+  ) as migration_history_available;
 ```
+
+If `migration_history_available` is `true`, you may then check the latest recorded migration with:
+
+```sql
+select max(version) as latest_migration
+from supabase_migrations.schema_migrations;
+```
+
+If `migration_history_available` is `false`, that is not by itself a Phase 3 blocker. Some SQL Editor contexts do not expose the Supabase migration-history schema. Continue by validating the actual public schema objects instead.
 
 Expected for the known staging verification project:
 
-- Latest migration should be at least `0019_secure_group_scope_rules_archive` before Phase 3.
 - It should not contain live/production legal case data.
+- If migration history is visible, latest migration should be at least `0019_secure_group_scope_rules_archive` before Phase 3.
 
 ## 2. Confirm Phase 3 is not already applied
 
-Run:
+Run this object-based check. It works even when `supabase_migrations.schema_migrations` is not visible:
+
+```sql
+select
+  exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'register_case'
+  ) as register_case_exists,
+  exists (
+    select 1
+    from information_schema.tables
+    where table_schema = 'public'
+      and table_name = 'operation_idempotency_keys'
+  ) as idempotency_table_exists,
+  exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'cases'
+      and column_name = 'registration_idempotency_key'
+  ) as case_registration_idempotency_column_exists;
+```
+
+If all three values are `true`, Phase 3 has probably already been applied. Do not paste the migration again unless you are deliberately testing idempotency on staging.
+
+If migration history is visible, you can additionally run:
 
 ```sql
 select version, name
 from supabase_migrations.schema_migrations
 where name = '0020_phase3_case_workflow';
 ```
-
-If this returns a row, do not paste the migration again unless you are deliberately testing idempotency on staging.
 
 ## 3. Apply Phase 3 migration
 
@@ -42,7 +82,18 @@ Do **not** run destructive SQL. Do **not** seed. Do **not** truncate.
 
 ## 4. Record migration history manually if using SQL Editor
 
-If you applied through SQL Editor instead of the Supabase migration API, record the migration only after the SQL succeeds:
+If you applied through SQL Editor instead of the Supabase migration API, first check whether migration history is available:
+
+```sql
+select exists (
+  select 1
+  from information_schema.tables
+  where table_schema = 'supabase_migrations'
+    and table_name = 'schema_migrations'
+) as migration_history_available;
+```
+
+Only if that returns `true`, record the migration after the SQL succeeds:
 
 ```sql
 insert into supabase_migrations.schema_migrations(version, name, statements)
@@ -54,7 +105,7 @@ values (
 on conflict do nothing;
 ```
 
-If your `schema_migrations` table has a different shape, skip this and tell me the table columns.
+If `migration_history_available` is `false`, skip this step and rely on the object validation below.
 
 ## 5. Run object validation
 
