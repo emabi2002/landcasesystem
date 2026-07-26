@@ -1,110 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { permissionErrorResponse, requireModulePermission } from '@/lib/auth/require-permission';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { apiFailure, apiSuccess, createRequestId, databaseErrorToHttp } from '@/lib/api/responses';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function clean(value: unknown) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
 
 export async function POST(request: NextRequest) {
+  const requestId = createRequestId();
+
   try {
-    const { user, admin } = await requireModulePermission('filings', 'create');
-    const body = await request.json();
-    const {
-      case_id,
-      filing_type,
-      filing_title,
-      filing_subtype,
-      description,
-      draft_file_url
-    } = body;
+    await requireModulePermission('filings', 'create');
+    const body = await request.json().catch(() => null);
 
-    if (typeof case_id !== 'string' || !case_id.trim()) {
-      return NextResponse.json({ error: 'Case ID is required' }, { status: 400 });
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json(apiFailure('INVALID_JSON', 'Request body must be valid JSON.', requestId), { status: 400 });
     }
 
-    if (
-      typeof filing_type !== 'string' ||
-      !filing_type.trim() ||
-      typeof filing_title !== 'string' ||
-      !filing_title.trim()
-    ) {
-      return NextResponse.json(
-        { error: 'Filing type and title are required' },
-        { status: 400 }
-      );
+    const payload = body as Record<string, unknown>;
+    const caseId = clean(payload.case_id);
+    const filingType = clean(payload.filing_type);
+    const filingTitle = clean(payload.filing_title ?? payload.title);
+    const fieldErrors: Record<string, string[]> = {};
+
+    if (!caseId || !UUID_PATTERN.test(caseId)) fieldErrors.case_id = ['A valid case ID is required.'];
+    if (!filingType) fieldErrors.filing_type = ['Filing type is required.'];
+    if (!filingTitle) fieldErrors.filing_title = ['Filing title is required.'];
+
+    if (Object.keys(fieldErrors).length > 0 || !caseId) {
+      return NextResponse.json(apiFailure('VALIDATION_FAILED', 'Please correct the highlighted fields.', requestId, fieldErrors), { status: 400 });
     }
 
-    const { data: caseData, error: caseError } = await admin
-      .from('cases' as never)
-      .select('assigned_officer_id, workflow_state' as never)
-      .eq('id' as never, case_id as never)
-      .single();
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.rpc('create_case_filing' as never, {
+      p_case_id: caseId,
+      p_filing: {
+        filing_type: filingType,
+        filing_title: filingTitle,
+        filing_subtype: clean(payload.filing_subtype),
+        title: filingTitle,
+        description: clean(payload.description),
+        draft_file_url: clean(payload.draft_file_url),
+      },
+      p_idempotency_key: clean(payload.idempotency_key),
+    } as never);
 
-    if (caseError || !caseData) {
-      return NextResponse.json({ error: 'Case not found' }, { status: 404 });
-    }
+    if (error) throw error;
 
-    const caseRecord = caseData as { assigned_officer_id?: string; workflow_state?: string };
-    const assignedOfficerId = caseRecord.assigned_officer_id;
-    if (assignedOfficerId && assignedOfficerId !== user.id) {
-      return NextResponse.json(
-        { error: 'You are not assigned to this case' },
-        { status: 403 }
-      );
-    }
-
-    const { data: filing, error: filingError } = await admin
-      .from('filings' as never)
-      .insert({
-        case_id,
-        filing_type,
-        filing_title,
-        filing_subtype,
-        description,
-        draft_file_url,
-        draft_uploaded_by: user.id,
-        draft_uploaded_at: new Date().toISOString(),
-        status: 'draft',
-        created_by: user.id
-      } as never)
-      .select()
-      .single();
-
-    if (filingError) throw filingError;
-
-    if (caseRecord.workflow_state === 'REGISTRATION_COMPLETED') {
-      await admin
-        .from('cases' as never)
-        .update({
-          workflow_state: 'DRAFTING',
-          updated_by: user.id,
-          updated_at: new Date().toISOString()
-        } as never)
-        .eq('id' as never, case_id as never);
-    }
-
-    await admin
-      .from('case_history' as never)
-      .insert({
-        case_id,
-        action: 'filing_created',
-        description: `Draft filing created: ${filing_title} (${filing_type})`,
-        performed_by: user.id,
-        metadata: {
-          filing_id: (filing as { id: string }).id,
-          filing_type,
-          filing_title
-        }
-      } as never);
-
-    return NextResponse.json({
-      success: true,
-      filing
-    });
+    return NextResponse.json(apiSuccess(data), { status: 201 });
   } catch (error) {
     const response = permissionErrorResponse(error);
     if (response) return response;
 
-    console.error('Error creating filing');
-    return NextResponse.json(
-      { error: 'Failed to create filing' },
-      { status: 500 }
-    );
+    console.error('Error creating filing', { requestId });
+    const mapped = databaseErrorToHttp(error);
+    return NextResponse.json(apiFailure(mapped.code, mapped.message, requestId), { status: mapped.status });
   }
 }

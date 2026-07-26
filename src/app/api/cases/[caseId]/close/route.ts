@@ -5,27 +5,29 @@ import { apiFailure, apiSuccess, createRequestId, databaseErrorToHttp } from '@/
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ caseId: string }> },
+) {
   const requestId = createRequestId();
 
   try {
-    await requireModulePermission('filings', 'update');
-
+    await requireModulePermission('cases', 'approve');
+    const { caseId } = await context.params;
     const body = await request.json().catch(() => null);
-    const caseId = body && typeof body === 'object' && !Array.isArray(body)
-      ? (body as { case_id?: unknown }).case_id
-      : null;
 
-    if (typeof caseId !== 'string' || !UUID_PATTERN.test(caseId)) {
-      return NextResponse.json(
-        apiFailure('VALIDATION_FAILED', 'A valid case ID is required.', requestId, { case_id: ['A valid case ID is required.'] }),
-        { status: 400 },
-      );
+    if (!UUID_PATTERN.test(caseId)) {
+      return NextResponse.json(apiFailure('VALIDATION_FAILED', 'A valid case ID is required.', requestId), { status: 400 });
+    }
+
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json(apiFailure('INVALID_JSON', 'Request body must be valid JSON.', requestId), { status: 400 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.rpc('submit_filings_for_review' as never, {
+    const { data, error } = await supabase.rpc('close_case' as never, {
       p_case_id: caseId,
+      p_closure: body,
     } as never);
 
     if (error) throw error;
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
     const response = permissionErrorResponse(error);
     if (response) return response;
 
-    console.error('Error submitting for review', { requestId });
+    console.error('Case closure failed', { requestId });
     const mapped = databaseErrorToHttp(error);
     return NextResponse.json(apiFailure(mapped.code, mapped.message, requestId), { status: mapped.status });
   }

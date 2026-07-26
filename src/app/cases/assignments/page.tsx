@@ -110,45 +110,18 @@ export default function CaseAssignmentsPage() {
 
     setIsAssigning(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const response = await fetch(`/api/cases/${selectedCase.id}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          officer_id: selectedOfficer,
+          instructions: assignmentNotes || null,
+        }),
+      });
 
-      const { error: updateError } = await (supabase as any)
-        .from('cases')
-        .update({
-          assigned_officer_id: selectedOfficer,
-          status: 'assigned',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', selectedCase.id);
-
-      if (updateError) throw updateError;
-
-      try {
-        await (supabase as any)
-          .from('case_assignments')
-          .insert({
-            case_id: selectedCase.id,
-            assigned_to: selectedOfficer,
-            assigned_by: user.id,
-            instructions: assignmentNotes || null,
-            status: 'active',
-          });
-      } catch (e) {
-        console.log('Assignment table not available, continuing...');
-      }
-
-      try {
-        await (supabase as any)
-          .from('case_history')
-          .insert({
-            case_id: selectedCase.id,
-            action: 'Case Assigned',
-            description: `Case assigned to officer. ${assignmentNotes ? `Notes: ${assignmentNotes}` : ''}`,
-            performed_by: user.id,
-          });
-      } catch (e) {
-        console.log('History table not available, continuing...');
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to assign case');
       }
 
       toast.success('Case assigned successfully!');
