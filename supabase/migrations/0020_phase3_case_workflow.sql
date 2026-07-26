@@ -531,6 +531,9 @@ declare
   v_uid uuid := auth.uid();
   v_case public.cases%rowtype;
   v_closure_id uuid;
+  v_blocking_tasks integer := 0;
+  v_open_compliance integer := 0;
+  v_unfiled_approved integer := 0;
   v_closure_type text := nullif(trim(coalesce(p_closure->>'closure_type', p_closure->>'closure_status', '')), '');
   v_closure_date date := nullif(p_closure->>'closure_date', '')::date;
   v_closure_notes text := nullif(trim(coalesce(p_closure->>'closure_notes', '')), '');
@@ -544,6 +547,25 @@ begin
   if not found then raise exception 'CASE_NOT_FOUND'; end if;
   if not public.can_access_case(p_case_id, 'update') then raise exception 'CASE_ACCESS_DENIED'; end if;
   if v_case.workflow_state <> 'READY_FOR_CLOSURE' then raise exception 'CASE_NOT_READY_FOR_CLOSURE'; end if;
+
+  select count(*) into v_blocking_tasks
+  from public.tasks
+  where case_id = p_case_id
+    and status <> 'completed'
+    and coalesce(priority, '') in ('urgent', 'critical', 'high');
+  if v_blocking_tasks > 0 then raise exception 'CLOSURE_BLOCKED_BY_ACTIVE_TASKS'; end if;
+
+  select count(*) into v_open_compliance
+  from public.compliance_tracking
+  where case_id = p_case_id
+    and compliance_status not in ('completed', 'closed', 'not_required');
+  if v_open_compliance > 0 then raise exception 'CLOSURE_BLOCKED_BY_COMPLIANCE'; end if;
+
+  select count(*) into v_unfiled_approved
+  from public.filings
+  where case_id = p_case_id
+    and status in ('APPROVED_FOR_FILING', 'UNDER_REVIEW', 'DRAFTING', 'draft', 'prepared', 'under_review');
+  if v_unfiled_approved > 0 then raise exception 'CLOSURE_BLOCKED_BY_FILINGS'; end if;
 
   perform set_config('app.workflow_transition', 'allowed', true);
   update public.cases

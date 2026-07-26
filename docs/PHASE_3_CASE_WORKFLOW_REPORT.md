@@ -207,6 +207,10 @@ Do not manually edit production data. If migration review fails in staging, crea
 ## 26. Items deferred to Phase 4
 
 - Full notification-centre redesign
+- Manual SQL Editor guide added in `docs/PHASE_3_SQL_EDITOR_GUIDE.md`
+- Filing review and record-filed actions exposed in the filing page
+- Dashboard upcoming-event count aligned with canonical `events` table through the server stats API
+- Closure RPC now blocks active high/critical tasks, open compliance items and pending/unfiled filings
 - Email/queue processing
 - Private document storage redesign
 - Full settings/preferences
