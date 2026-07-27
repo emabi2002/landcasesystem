@@ -33,6 +33,11 @@ interface LookupItem {
   display_order: number;
 }
 
+type CreateLookupResponse =
+  | { success: true; data: LookupItem }
+  | { success: false; error?: { message?: string } }
+  | { error?: string };
+
 interface SelectWithAddProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -119,40 +124,41 @@ export function SelectWithAdd({
 
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const response = await fetch('/api/admin/master-files', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tableName,
+          name: newItemName.trim(),
+          description: newItemDescription.trim() || null,
+        }),
+      });
 
-      const newItem = {
-        name: newItemName.trim(),
-        description: newItemDescription.trim() || null,
-        code: newItemName.trim().toLowerCase().replace(/\s+/g, '_'),
-        is_active: true,
-        display_order: items.length + 1,
-        created_by: user?.id || null,
-      };
+      const result = (await response.json().catch(() => null)) as CreateLookupResponse | null;
+      if (!response.ok || !result || !('success' in result) || result.success === false) {
+        let message: string | undefined;
+        if (result && 'success' in result && result.success === false) {
+          message = result.error?.message;
+        } else if (result && 'error' in result && typeof result.error === 'string') {
+          message = result.error;
+        }
+        throw new Error(message || 'Failed to add new item');
+      }
 
-      const { data, error } = await (supabase as any)
-        .from(tableName)
-        .insert(newItem)
-        .select()
-        .single();
+      const data = result.data;
+      toast.success(`"${data.name}" added successfully`);
 
-      if (error) throw error;
+      const nextItems = [...items, data].sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
+      setItems(nextItems);
+      onValueChange(useCodeAsValue ? (data.code || data.name) : data.name);
 
-      toast.success(`"${newItemName}" added successfully!`);
-
-      // Update local items list
-      setItems([...items, data]);
-
-      // Select the new item
-      onValueChange(useCodeAsValue ? data.code : data.name);
-
-      // Reset and close dialog
       setNewItemName('');
       setNewItemDescription('');
       setDialogOpen(false);
     } catch (error) {
       console.error('Error adding new item:', error);
-      toast.error('Failed to add new item');
+      const message = error instanceof Error ? error.message : 'Failed to add new item';
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -273,7 +279,7 @@ export function SelectWithAdd({
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:space-x-0">
             <Button
               type="button"
               variant="outline"
@@ -286,18 +292,20 @@ export function SelectWithAdd({
               Cancel
             </Button>
             <Button
+              type="button"
               onClick={handleAddNewItem}
               disabled={saving || !newItemName.trim()}
+              className="min-w-36 gap-2 bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 disabled:bg-emerald-300 disabled:text-white"
             >
               {saving ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Adding...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add {getTableLabel()}
+                  <Plus className="h-4 w-4" />
+                  Save {getTableLabel()}
                 </>
               )}
             </Button>
