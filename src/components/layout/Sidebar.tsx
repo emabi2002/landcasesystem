@@ -129,7 +129,7 @@ const navigationGroups: NavGroup[] = [
         moduleKey: 'section5_notices',
       },
       {
-        name: 'Section 160(2) Applications',
+        name: 'Section 160',
         href: '/section-160',
         icon: Landmark,
         moduleKey: 'section_160',
