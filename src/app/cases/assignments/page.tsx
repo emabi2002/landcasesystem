@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import {
   UserCheck,
   Search,
@@ -24,6 +26,10 @@ import {
   FileText,
   ArrowRight,
   RefreshCw,
+  Plus,
+  Pencil,
+  ChevronsUpDown,
+  Check,
 } from 'lucide-react';
 
 interface PendingCase {
@@ -37,15 +43,38 @@ interface PendingCase {
   created_at: string;
   description: string | null;
   assigned_officer_id: string | null;
+  assigned_action_officer_id?: string | null;
 }
 
 interface Officer {
   id: string;
-  email: string;
-  full_name: string | null;
-  legacy_role: string | null;
+  name: string;
+  title: string | null;
   department: string | null;
+  division?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  employee_id?: string | null;
+  office_location?: string | null;
+  employment_status?: string | null;
+  is_active: boolean;
+  notes?: string | null;
+  profile_id?: string | null;
 }
+
+const emptyOfficerForm = {
+  id: '',
+  name: '',
+  title: '',
+  department: '',
+  email: '',
+  phone: '',
+  employee_id: '',
+  office_location: '',
+  employment_status: 'active',
+  notes: '',
+  profile_id: '',
+};
 
 export default function CaseAssignmentsPage() {
   const router = useRouter();
@@ -60,6 +89,11 @@ export default function CaseAssignmentsPage() {
   const [assignmentNotes, setAssignmentNotes] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [officerPickerOpen, setOfficerPickerOpen] = useState(false);
+  const [officerDialogOpen, setOfficerDialogOpen] = useState(false);
+  const [editingOfficer, setEditingOfficer] = useState<Officer | null>(null);
+  const [officerForm, setOfficerForm] = useState(emptyOfficerForm);
+  const [savingOfficer, setSavingOfficer] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -71,25 +105,20 @@ export default function CaseAssignmentsPage() {
       const { data: cases, error: casesError } = await supabase
         .from('cases')
         .select('*')
-        .is('assigned_officer_id', null)
+        .or('assigned_officer_id.is.null,assigned_action_officer_id.is.null')
         .order('created_at', { ascending: false });
 
       if (casesError) throw casesError;
-      setPendingCases(cases as PendingCase[] || []);
+      setPendingCases(((cases as PendingCase[]) || []).filter((caseItem) => !caseItem.assigned_officer_id && !caseItem.assigned_action_officer_id));
 
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
+      const { data: actionOfficers, error: officersError } = await (supabase as any)
+        .from('action_officers')
         .select('*')
-        .eq('active', true)
-        .order('full_name', { ascending: true });
+        .eq('is_active', true)
+        .order('name', { ascending: true });
 
-      if (!profilesError && profiles) {
-        setOfficers(
-          (profiles as Officer[]).filter((profile) =>
-            ['action_officer_litigation_lawyer', 'senior_legal_officer_litigation', 'admin'].includes(profile.legacy_role || '')
-          )
-        );
-      }
+      if (officersError) throw officersError;
+      setOfficers((actionOfficers as Officer[]) || []);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load data');
@@ -103,6 +132,65 @@ export default function CaseAssignmentsPage() {
     setRefreshing(true);
     await loadData();
     toast.success('Data refreshed');
+  };
+
+  const selectedOfficerRecord = officers.find((officer) => officer.id === selectedOfficer) || null;
+
+  const openOfficerForm = (officer?: Officer | null) => {
+    setEditingOfficer(officer || null);
+    setOfficerForm(
+      officer
+        ? {
+            id: officer.id,
+            name: officer.name || '',
+            title: officer.title || '',
+            department: officer.department || officer.division || '',
+            email: officer.email || '',
+            phone: officer.phone || '',
+            employee_id: officer.employee_id || '',
+            office_location: officer.office_location || '',
+            employment_status: officer.employment_status || (officer.is_active ? 'active' : 'inactive'),
+            notes: officer.notes || '',
+            profile_id: officer.profile_id || '',
+          }
+        : emptyOfficerForm
+    );
+    setOfficerDialogOpen(true);
+  };
+
+  const saveOfficer = async () => {
+    if (!officerForm.name.trim() || !officerForm.title.trim() || !officerForm.department.trim()) {
+      toast.error('Full name, position/title, and division/section are required');
+      return;
+    }
+
+    setSavingOfficer(true);
+    try {
+      const response = await fetch('/api/internal-officers/upsert', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(officerForm),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to save officer');
+
+      const savedOfficer = result.officer as Officer;
+      setOfficers((previous) => {
+        const withoutSaved = previous.filter((officer) => officer.id !== savedOfficer.id);
+        return [...withoutSaved, savedOfficer].sort((a, b) => a.name.localeCompare(b.name));
+      });
+      setSelectedOfficer(savedOfficer.id);
+      setOfficerDialogOpen(false);
+      setEditingOfficer(null);
+      setOfficerForm(emptyOfficerForm);
+      toast.success(editingOfficer ? 'Internal officer updated' : 'Internal officer added and selected');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save officer');
+    } finally {
+      setSavingOfficer(false);
+    }
   };
 
   const handleAssignCase = async () => {
@@ -121,10 +209,14 @@ export default function CaseAssignmentsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const selectedOfficerRecord = officers.find((officer) => officer.id === selectedOfficer);
+      if (!selectedOfficerRecord) throw new Error('Selected officer could not be found');
+
       const { error: updateError } = await (supabase as any)
         .from('cases')
         .update({
-          assigned_officer_id: selectedOfficer,
+          assigned_officer_id: selectedOfficerRecord.profile_id || null,
+          assigned_action_officer_id: selectedOfficerRecord.id,
           status: 'assigned',
           updated_at: new Date().toISOString(),
           updated_by: user.id,
@@ -154,10 +246,11 @@ export default function CaseAssignmentsPage() {
           .from('case_assignments')
           .insert({
             case_id: selectedCase.id,
-            assigned_officer_id: selectedOfficer,
+            assigned_officer_id: selectedOfficerRecord.profile_id || null,
+            action_officer_id: selectedOfficerRecord.id,
             assigned_by_user_id: user.id,
             previous_officer_id: selectedCase.assigned_officer_id,
-            assignment_type: selectedCase.assigned_officer_id ? 'reassignment' : 'initial_assignment',
+            assignment_type: selectedCase.assigned_action_officer_id ? 'reassignment' : 'initial_assignment',
             assignment_reason: assignmentNotes.trim(),
             is_current: true,
             remarks: assignmentNotes.trim(),
@@ -173,27 +266,28 @@ export default function CaseAssignmentsPage() {
           .from('case_history')
           .insert({
             case_id: selectedCase.id,
-            action: selectedCase.assigned_officer_id ? 'Case Reassigned' : 'Case Assigned',
-            description: selectedCase.assigned_officer_id
-              ? `Case reassigned to officer. Reason: ${assignmentNotes.trim()}`
-              : `Case assigned to officer. Instructions: ${assignmentNotes.trim()}`,
+            action: selectedCase.assigned_action_officer_id ? 'Case Reassigned' : 'Case Assigned',
+            description: selectedCase.assigned_action_officer_id
+              ? `Case reassigned to action officer. Reason: ${assignmentNotes.trim()}`
+              : `Case assigned to action officer. Instructions: ${assignmentNotes.trim()}`,
             performed_by: user.id,
-            activity_type: selectedCase.assigned_officer_id ? 'officer_reassigned' : 'officer_assigned',
+            activity_type: selectedCase.assigned_action_officer_id ? 'officer_reassigned' : 'officer_assigned',
             entity_type: 'case_assignments',
-            old_value: selectedCase.assigned_officer_id ? { officer_id: selectedCase.assigned_officer_id } : null,
-            new_value: { officer_id: selectedOfficer },
+            old_value: selectedCase.assigned_action_officer_id ? { action_officer_id: selectedCase.assigned_action_officer_id } : null,
+            new_value: { action_officer_id: selectedOfficerRecord.id, officer_name: selectedOfficerRecord.name },
             reason: assignmentNotes.trim(),
             source_module: 'case_assignments',
-            changed_fields: ['assigned_officer_id'],
+            changed_fields: ['assigned_action_officer_id'],
           });
       } catch (e) {
         console.log('History table not available, continuing...');
       }
 
       await logAudit('update', 'cases', selectedCase.id, 'case_assignments', {
-        action: selectedCase.assigned_officer_id ? 'reassignment' : 'assignment',
-        previous_officer_id: selectedCase.assigned_officer_id,
-        new_officer_id: selectedOfficer,
+        action: selectedCase.assigned_action_officer_id ? 'reassignment' : 'assignment',
+        previous_action_officer_id: selectedCase.assigned_action_officer_id,
+        new_action_officer_id: selectedOfficerRecord.id,
+        new_officer_name: selectedOfficerRecord.name,
         reason: assignmentNotes.trim(),
       });
 
@@ -389,6 +483,10 @@ export default function CaseAssignmentsPage() {
                             setSelectedCase(null);
                             setSelectedOfficer('');
                             setAssignmentNotes('');
+                            setOfficerPickerOpen(false);
+                            setOfficerDialogOpen(false);
+                            setEditingOfficer(null);
+                            setOfficerForm(emptyOfficerForm);
                           }
                         }}>
                           <DialogTrigger asChild>
@@ -420,28 +518,63 @@ export default function CaseAssignmentsPage() {
                               </div>
                               <div className="space-y-2">
                                 <Label className="text-xs text-slate-600">Assign To *</Label>
-                                <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
-                                  <SelectTrigger className="h-9">
-                                    <SelectValue placeholder="Select an officer" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {officers.map((officer) => (
-                                      <SelectItem key={officer.id} value={officer.id}>
-                                        <div className="flex items-center gap-2">
-                                          <User className="h-4 w-4" />
-                                          <span>{officer.full_name || officer.email}</span>
-                                          <span className="text-xs text-slate-500">
-                                            ({(officer.legacy_role || 'staff').replace(/_/g, ' ')})
+                                <div className="flex gap-2">
+                                  <Popover open={officerPickerOpen} onOpenChange={setOfficerPickerOpen}>
+                                    <PopoverTrigger asChild>
+                                      <Button variant="outline" role="combobox" className="h-9 flex-1 justify-between font-normal">
+                                        {selectedOfficerRecord ? (
+                                          <span className="truncate text-left">
+                                            {selectedOfficerRecord.name} – {selectedOfficerRecord.title || 'Internal Officer'}
                                           </span>
-                                        </div>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                        ) : (
+                                          <span className="text-slate-500">Search or select an officer</span>
+                                        )}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent align="start" className="w-[420px] p-0">
+                                      <Command>
+                                        <CommandInput placeholder="Search name, title, division, email..." />
+                                        <CommandList>
+                                          <CommandEmpty>No active internal officer found.</CommandEmpty>
+                                          <CommandGroup>
+                                            {officers.map((officer) => (
+                                              <CommandItem
+                                                key={officer.id}
+                                                value={`${officer.name} ${officer.title || ''} ${officer.department || officer.division || ''} ${officer.email || ''}`}
+                                                onSelect={() => {
+                                                  setSelectedOfficer(officer.id);
+                                                  setOfficerPickerOpen(false);
+                                                }}
+                                                className="gap-2"
+                                              >
+                                                <Check className={`h-4 w-4 ${selectedOfficer === officer.id ? 'opacity-100' : 'opacity-0'}`} />
+                                                <div className="min-w-0 flex-1">
+                                                  <div className="truncate font-medium">{officer.name}</div>
+                                                  <div className="truncate text-xs text-slate-500">
+                                                    {officer.title || 'Internal Officer'} · {officer.department || officer.division || 'No division'}
+                                                  </div>
+                                                </div>
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        </CommandList>
+                                      </Command>
+                                    </PopoverContent>
+                                  </Popover>
+                                  {selectedOfficerRecord && (
+                                    <Button type="button" variant="outline" size="icon" className="h-9 w-9" onClick={() => openOfficerForm(selectedOfficerRecord)} title="Edit selected officer">
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  <Button type="button" variant="outline" size="icon" className="h-9 w-9" onClick={() => openOfficerForm()} title="Add new internal lawyer">
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
                               <div className="space-y-2">
                                 <Label className="text-xs text-slate-600">
-                                  {caseItem.assigned_officer_id ? 'Reassignment Reason *' : 'Assignment Reason / Instructions *'}
+                                  {caseItem.assigned_action_officer_id ? 'Reassignment Reason *' : 'Assignment Reason / Instructions *'}
                                 </Label>
                                 <Textarea
                                   placeholder="Add a reason for reassignment or instructions for the assigned officer..."
@@ -491,6 +624,65 @@ export default function CaseAssignmentsPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={officerDialogOpen} onOpenChange={setOfficerDialogOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{editingOfficer ? 'Edit Internal Lawyer / Officer' : 'Add Internal Lawyer / Officer'}</DialogTitle>
+            <DialogDescription>
+              Save an internal lawyer or action officer. The saved record is used by reference for case assignment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Full name *</Label>
+              <Input value={officerForm.name} onChange={(event) => setOfficerForm({ ...officerForm, name: event.target.value })} placeholder="e.g. John Kila" />
+            </div>
+            <div className="space-y-2">
+              <Label>Position / title *</Label>
+              <Input value={officerForm.title} onChange={(event) => setOfficerForm({ ...officerForm, title: event.target.value })} placeholder="Senior Legal Officer" />
+            </div>
+            <div className="space-y-2">
+              <Label>Division / section *</Label>
+              <Input value={officerForm.department} onChange={(event) => setOfficerForm({ ...officerForm, department: event.target.value })} placeholder="Legal Services Division" />
+            </div>
+            <div className="space-y-2">
+              <Label>Email address</Label>
+              <Input type="email" value={officerForm.email} onChange={(event) => setOfficerForm({ ...officerForm, email: event.target.value })} placeholder="name@example.gov.pg" />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone number</Label>
+              <Input value={officerForm.phone} onChange={(event) => setOfficerForm({ ...officerForm, phone: event.target.value })} placeholder="Phone number" />
+            </div>
+            <div className="space-y-2">
+              <Label>Employee ID</Label>
+              <Input value={officerForm.employee_id} onChange={(event) => setOfficerForm({ ...officerForm, employee_id: event.target.value })} placeholder="Employee/account number" />
+            </div>
+            <div className="space-y-2">
+              <Label>Employment / account status</Label>
+              <Select value={officerForm.employment_status} onValueChange={(value) => setOfficerForm({ ...officerForm, employment_status: value })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="leave">On Leave</SelectItem>
+                  <SelectItem value="retired">Retired</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Notes</Label>
+              <Textarea value={officerForm.notes} onChange={(event) => setOfficerForm({ ...officerForm, notes: event.target.value })} rows={3} placeholder="Optional remarks" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOfficerDialogOpen(false)}>Cancel</Button>
+            <Button type="button" onClick={saveOfficer} disabled={savingOfficer} className="bg-emerald-600 hover:bg-emerald-700">
+              {savingOfficer ? 'Saving...' : editingOfficer ? 'Save Changes' : 'Add and Select'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
