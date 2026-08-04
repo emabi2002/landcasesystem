@@ -34,6 +34,34 @@ function isApiRoute(pathname: string) {
   return pathname.startsWith('/api/');
 }
 
+function permissionAllowsAction(
+  permission: Record<string, unknown>,
+  action: string
+) {
+  return permission[`can_${action}`] === true;
+}
+
+async function userHasAdminRoutePermission(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  moduleKey: string,
+  action: string
+) {
+  const { data, error } = await supabase.rpc('get_user_permissions', {
+    p_user_id: userId,
+  });
+
+  if (error || !Array.isArray(data)) {
+    return false;
+  }
+
+  return data.some((permission) => {
+    if (!permission || typeof permission !== 'object') return false;
+    const record = permission as Record<string, unknown>;
+    return record.module_key === moduleKey && permissionAllowsAction(record, action);
+  });
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -94,13 +122,14 @@ export async function middleware(request: NextRequest) {
 
     const adminPermission = getAdminRoutePermission(pathname);
     if (user && adminPermission) {
-      const { data: allowed, error } = await supabase.rpc('user_has_permission', {
-        p_user_id: user.id,
-        p_module_key: adminPermission.moduleKey,
-        p_action: adminPermission.action,
-      });
+      const allowed = await userHasAdminRoutePermission(
+        supabase,
+        user.id,
+        adminPermission.moduleKey,
+        adminPermission.action
+      );
 
-      if (error || allowed !== true) {
+      if (!allowed) {
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = '/dashboard';
         redirectUrl.search = '';
