@@ -1,0 +1,24 @@
+name: same-permcheck
+
+on:
+  push:
+    branches:
+      - same/publish-43bc564
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify push capability
+        run: |
+          set -euo pipefail
+          echo "actions-enabled=true"
+          git push origin HEAD:refs/heads/same/permtest-tmp
+          git push origin --delete same/permtest-tmp
+          echo "push-capability=OK"
