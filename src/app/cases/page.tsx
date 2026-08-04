@@ -102,8 +102,9 @@ const DEFAULT_ITEMS_PER_PAGE = 15;
 
 const STORAGE_KEY = 'cases_saved_filters';
 const ITEMS_PER_PAGE_KEY = 'cases_items_per_page';
+const CASE_FETCH_BATCH_SIZE = 1000;
+const MAX_CASE_FETCH_BATCHES = 100;
 
-// Default saved filters
 const DEFAULT_FILTERS: SavedFilter[] = [
   { id: 'active', name: 'Active Cases', filters: { searchQuery: '', statusFilter: 'active', typeFilter: 'all', dateFrom: '', dateTo: '', regionFilter: 'all', priorityFilter: 'all' } },
   { id: 'urgent', name: 'Urgent Priority', filters: { searchQuery: '', statusFilter: 'active', typeFilter: 'all', dateFrom: '', dateTo: '', regionFilter: 'all', priorityFilter: 'urgent' } },
@@ -123,7 +124,6 @@ export default function CasesPage() {
   const [showClosed, setShowClosed] = useState(false);
   const [deletingCaseId, setDeletingCaseId] = useState<string | null>(null);
 
-  // Advanced filters
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [regionFilter, setRegionFilter] = useState('all');
@@ -131,20 +131,16 @@ export default function CasesPage() {
 
   const [exporting, setExporting] = useState(false);
 
-  // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_ITEMS_PER_PAGE);
 
-  // Saved filters
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>(DEFAULT_FILTERS);
   const [filterName, setFilterName] = useState('');
   const [showSaveFilter, setShowSaveFilter] = useState(false);
 
-  // Load saved filters and preferences from localStorage
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -168,11 +164,10 @@ export default function CasesPage() {
 
   useEffect(() => {
     filterCases();
-    setCurrentPage(1); // Reset to page 1 when filters change
-    setSelectedIds(new Set()); // Clear selection when filters change
+    setCurrentPage(1);
+    setSelectedIds(new Set());
   }, [searchQuery, statusFilter, typeFilter, cases, showClosed, dateFrom, dateTo, regionFilter, priorityFilter]);
 
-  // Set up real-time subscription
   useEffect(() => {
     const channel = supabase
       .channel('cases_changes')
@@ -181,7 +176,7 @@ export default function CasesPage() {
         { event: '*', schema: 'public', table: 'cases' },
         (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           if (payload.eventType === 'INSERT') {
-            setCases(prev => [payload.new as unknown as CaseRow, ...prev]);
+            setCases(prev => [payload.new as unknown as CaseRow, ...prev.filter((c) => c.id !== payload.new.id)]);
             toast.info('New case registered');
           } else if (payload.eventType === 'UPDATE') {
             setCases(prev => prev.map(c => c.id === payload.new.id ? payload.new as unknown as CaseRow : c));
@@ -207,13 +202,29 @@ export default function CasesPage() {
 
   const loadCases = async () => {
     try {
-      const { data, error } = await supabase
-        .from('cases')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const allCases: CaseRow[] = [];
 
-      if (error) throw error;
-      setCases((data as CaseRow[]) ?? []);
+      for (let batch = 0; batch < MAX_CASE_FETCH_BATCHES; batch += 1) {
+        const from = batch * CASE_FETCH_BATCH_SIZE;
+        const to = from + CASE_FETCH_BATCH_SIZE - 1;
+
+        const { data, error } = await supabase
+          .from('cases')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, to);
+
+        if (error) throw error;
+
+        const rows = (data as CaseRow[] | null) ?? [];
+        allCases.push(...rows);
+
+        if (rows.length < CASE_FETCH_BATCH_SIZE) {
+          break;
+        }
+      }
+
+      setCases(allCases);
     } catch (error) {
       console.error('Error loading cases:', error);
       toast.error('Failed to load cases');
@@ -371,11 +382,9 @@ export default function CasesPage() {
     setFilteredCases(filtered);
   };
 
-  // Pagination
   const totalPages = Math.ceil(filteredCases.length / itemsPerPage);
   const paginatedCases = filteredCases.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  // Bulk selection helpers
   const allOnPageSelected = paginatedCases.length > 0 && paginatedCases.every(c => selectedIds.has(c.id));
   const someOnPageSelected = paginatedCases.some(c => selectedIds.has(c.id));
 
@@ -407,10 +416,8 @@ export default function CasesPage() {
     });
   };
 
-  // Get unique regions from cases
   const uniqueRegions = [...new Set(cases.map(c => c.region).filter(Boolean))] as string[];
 
-  // Export functions
   const exportToExcel = () => {
     setExporting(true);
     try {
@@ -555,7 +562,6 @@ export default function CasesPage() {
   return (
     <AppLayout>
       <div className="min-h-screen bg-slate-50">
-        {/* Sticky Header Bar */}
         <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -570,7 +576,6 @@ export default function CasesPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {/* Saved Filters */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -594,7 +599,6 @@ export default function CasesPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Export Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button data-tour="cases-export" variant="outline" size="sm" disabled={exporting || filteredCases.length === 0}>
@@ -625,7 +629,6 @@ export default function CasesPage() {
           </div>
         </div>
 
-        {/* Bulk Action Bar */}
         {selectedIds.size > 0 && (
           <div className="sticky top-[73px] z-10 bg-emerald-600 text-white px-6 py-2">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -661,11 +664,8 @@ export default function CasesPage() {
           </div>
         )}
 
-        {/* Main Content */}
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
-
-            {/* Summary Bar */}
             <div className="px-6 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-6 text-sm">
                 <span className="text-slate-600">
@@ -688,11 +688,9 @@ export default function CasesPage() {
               )}
             </div>
 
-            {/* Filters Section */}
             <div className="p-6 border-b border-slate-200">
               <h2 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-4">Search & Filters</h2>
               <div data-tour="cases-filters" className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                {/* Search */}
                 <div data-tour="cases-search" className="col-span-2">
                   <Label className="text-xs text-slate-600">Search</Label>
                   <div className="relative mt-1">
@@ -706,7 +704,6 @@ export default function CasesPage() {
                   </div>
                 </div>
 
-                {/* Status */}
                 <div>
                   <Label className="text-xs text-slate-600">Status</Label>
                   <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
@@ -725,7 +722,6 @@ export default function CasesPage() {
                   </Select>
                 </div>
 
-                {/* Type */}
                 <div>
                   <Label className="text-xs text-slate-600">Type</Label>
                   <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
@@ -741,19 +737,16 @@ export default function CasesPage() {
                   </Select>
                 </div>
 
-                {/* Date From */}
                 <div>
                   <Label className="text-xs text-slate-600">From</Label>
                   <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="mt-1 h-9" />
                 </div>
 
-                {/* Date To */}
                 <div>
                   <Label className="text-xs text-slate-600">To</Label>
                   <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="mt-1 h-9" />
                 </div>
 
-                {/* Region */}
                 <div>
                   <Label className="text-xs text-slate-600">Region</Label>
                   <Select value={regionFilter} onValueChange={setRegionFilter}>
@@ -766,7 +759,6 @@ export default function CasesPage() {
                 </div>
               </div>
 
-              {/* Include Closed checkbox */}
               {statusFilter === 'all' && (
                 <div className="flex items-center gap-2 mt-3">
                   <Checkbox id="showClosed" checked={showClosed} onCheckedChange={(c) => setShowClosed(c === true)} />
@@ -775,7 +767,6 @@ export default function CasesPage() {
               )}
             </div>
 
-            {/* Cases Table */}
             <div className="overflow-x-auto">
               {paginatedCases.length === 0 ? (
                 <div className="p-12 text-center">
@@ -895,7 +886,6 @@ export default function CasesPage() {
               )}
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -962,7 +952,6 @@ export default function CasesPage() {
               </div>
             )}
 
-            {/* Footer */}
             {filteredCases.length > 0 && totalPages <= 1 && (
               <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 text-xs text-slate-500 flex items-center justify-between">
                 <span>Showing {filteredCases.length} of {cases.length} cases</span>
@@ -973,7 +962,6 @@ export default function CasesPage() {
         </div>
       </div>
 
-      {/* Save Filter Dialog */}
       <AlertDialog open={showSaveFilter} onOpenChange={setShowSaveFilter}>
         <AlertDialogContent>
           <AlertDialogHeader>
