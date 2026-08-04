@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,17 +18,10 @@ import {
 } from '@/components/ui/select';
 import { SelectWithAdd } from '@/components/ui/select-with-add';
 import { HelpTooltip } from '@/components/help';
+import { logAudit } from '@/lib/permissions';
 import { ArrowLeft, Save, X } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-
-function createClientIdempotencyKey() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
-    const random = Math.floor(Math.random() * 16);
-    const value = char === 'x' ? random : (random & 0x3) | 0x8;
-    return value.toString(16);
-  });
-}
 
 export default function NewCasePage() {
   const router = useRouter();
@@ -72,15 +66,14 @@ export default function NewCasePage() {
     setLoading(true);
 
     try {
-      const idempotencyKey = createClientIdempotencyKey();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
       const response = await fetch('/api/cases/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          case_number: '',
-          idempotency_key: idempotencyKey,
           proceeding_filed_date: formData.proceeding_filed_date || null,
           documents_served_date: formData.documents_served_date || null,
           officer_assigned_date: formData.officer_assigned_date || null,
@@ -89,19 +82,20 @@ export default function NewCasePage() {
           returnable_date: formData.returnable_date
             ? new Date(formData.returnable_date).toISOString()
             : null,
+          user_id: user.id,
         }),
       });
 
       const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error?.message || 'Failed to register case');
-      }
+      if (!result.success) throw new Error(result.error);
+      if (!result.case) throw new Error('No case data returned');
 
-      const createdCase = result.data;
-      if (!createdCase?.case_id) throw new Error('No case data returned');
-
-      toast.success(`Case ${createdCase.case_number} registered successfully`);
-      router.push(`/cases/${createdCase.case_id}`);
+      toast.success('Case registered successfully');
+      await logAudit('create', 'cases', result.case.id, 'case', {
+        case_number: result.case.case_number,
+        title: formData.title,
+      });
+      router.push(`/cases/${result.case.id}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to register case';
       toast.error(errorMessage);

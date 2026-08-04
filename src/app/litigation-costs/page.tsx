@@ -65,14 +65,10 @@ import {
 interface CostWithCase extends LitigationCost {
   cases?: {
     case_number: string;
-    title: string | null;
-    case_type: string | null;
+    title: string;
+    case_type: string;
     status: string;
-  } | null;
-  cost_categories?: {
-    name: string;
-    category_group: string | null;
-  } | null;
+  };
 }
 
 interface MonthlySummary {
@@ -179,19 +175,19 @@ export default function LitigationCostsPage() {
       if (error) throw error;
 
       // Filter by case type if needed
-      let filteredCosts: CostWithCase[] = (costsData || []) as CostWithCase[];
+      let filteredCosts = costsData || [];
       if (caseTypeFilter !== 'all') {
         filteredCosts = filteredCosts.filter(
-          (c) => c.cases?.case_type === caseTypeFilter
+          (c: CostWithCase) => c.cases?.case_type === caseTypeFilter
         );
       }
 
       setCosts(filteredCosts);
 
       // Calculate totals
-      const totalAmount = filteredCosts.reduce((sum, c) => sum + (c.amount || 0), 0);
-      const totalPaid = filteredCosts.reduce((sum, c) => sum + (c.amount_paid || 0), 0);
-      const uniqueCases = new Set(filteredCosts.map((c) => c.case_id));
+      const totalAmount = filteredCosts.reduce((sum: number, c: CostWithCase) => sum + (c.amount || 0), 0);
+      const totalPaid = filteredCosts.reduce((sum: number, c: CostWithCase) => sum + (c.amount_paid || 0), 0);
+      const uniqueCases = new Set(filteredCosts.map((c: CostWithCase) => c.case_id));
 
       setTotals({
         totalAmount,
@@ -203,7 +199,7 @@ export default function LitigationCostsPage() {
 
       // Calculate monthly summary
       const monthlyMap = new Map<string, MonthlySummary>();
-      filteredCosts.forEach((cost) => {
+      filteredCosts.forEach((cost: CostWithCase) => {
         const month = format(new Date(cost.date_incurred), 'MMM yyyy');
         const existing = monthlyMap.get(month) || { month, total: 0, paid: 0, outstanding: 0 };
         existing.total += cost.amount || 0;
@@ -215,8 +211,8 @@ export default function LitigationCostsPage() {
 
       // Calculate category summary
       const categoryMap = new Map<string, number>();
-      filteredCosts.forEach((cost) => {
-        const categoryName = cost.cost_categories?.name || cost.cost_type;
+      filteredCosts.forEach((cost: CostWithCase) => {
+        const categoryName = (cost as CostWithCase & { cost_categories?: { name: string } }).cost_categories?.name || cost.cost_type;
         const existing = categoryMap.get(categoryName) || 0;
         categoryMap.set(categoryName, existing + (cost.amount || 0));
       });
@@ -236,7 +232,7 @@ export default function LitigationCostsPage() {
 
       // Load case summaries for the table
       const caseSummaryMap = new Map<string, CaseCostSummary>();
-      filteredCosts.forEach((cost) => {
+      filteredCosts.forEach((cost: CostWithCase) => {
         const caseId = cost.case_id;
         const existing = caseSummaryMap.get(caseId);
 

@@ -3,25 +3,6 @@
 -- Dependencies: 0001, 0002, 0003
 -- Safety: Forward-only. SECURITY DEFINER used only where required, with fixed search_path.
 
--- Existing UAT databases may have partial RBAC tables from earlier setup.
--- Ensure canonical columns used by permission RPCs exist before creating functions.
-alter table public.user_groups add column if not exists assigned_by uuid references public.profiles(id) on delete set null;
-alter table public.user_groups add column if not exists assigned_at timestamptz not null default timezone('utc', now());
-alter table public.user_groups add column if not exists expires_at timestamptz;
-alter table public.user_groups add column if not exists is_active boolean not null default true;
-alter table public.groups add column if not exists is_active boolean not null default true;
-alter table public.modules add column if not exists is_active boolean not null default true;
-
--- Existing UAT databases may have older RPC signatures. Drop function definitions before recreating canonical versions.
-drop function if exists public.get_user_permissions(uuid);
-drop function if exists public.user_has_any_permission(uuid, text[], text);
-drop function if exists public.user_has_permission(uuid, text, text);
-drop function if exists public.user_has_permission_internal(uuid, text, text);
-drop function if exists public.user_data_scope(uuid, text);
-drop function if exists public.current_user_has_permission(text, text);
-drop function if exists public.current_user_is_admin();
-drop function if exists public.is_admin_user(uuid);
-
 -- Internal helper: is the given user an authorised administrator (users.read via any active group)?
 create or replace function public.is_admin_user(p_user_id uuid)
 returns boolean

@@ -204,7 +204,7 @@ The review confirmed the system is **functionally complete** — there are **no 
 
 **Remaining notes for maintainers:**
 
-- Some pages remain reachable by URL but are not in the sidebar (e.g. `/closure`, `/compliance-tracking`, `/litigation/*`, `/reception/*`, `/settings/*`). Several are intentional deep-links (e.g. `/litigation/filings/[caseId]`); others should be reviewed for inclusion or retirement in the new environment.
+- Some pages remain reachable by URL but are not in the sidebar (e.g. `/closure`, `/compliance-tracking`, `/litigation/*`, `/reception/*`, `/settings/*`). Several are intentional deep-links (e.g. `/litigation/filings/[caseId]`); others are legacy and could be linked or retired.
 - Final case closure intentionally has its own dedicated flow (Closure tab / `CaseClosureDialog`) with a pre-closure checklist, so the inline stage control stops at **Compliance**.
 
 ---

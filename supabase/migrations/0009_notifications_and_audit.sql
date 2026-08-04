@@ -17,17 +17,6 @@ create table if not exists public.notifications (
   created_at timestamptz not null default timezone('utc', now()),
   expires_at timestamptz
 );
-alter table public.notifications add column if not exists user_id uuid references public.profiles(id) on delete cascade;
-alter table public.notifications add column if not exists case_id uuid references public.cases(id) on delete set null;
-alter table public.notifications add column if not exists type text not null default 'case_update';
-alter table public.notifications add column if not exists title text;
-alter table public.notifications add column if not exists message text;
-alter table public.notifications add column if not exists link text;
-alter table public.notifications add column if not exists priority text not null default 'normal';
-alter table public.notifications add column if not exists read boolean not null default false;
-alter table public.notifications add column if not exists read_at timestamptz;
-alter table public.notifications add column if not exists created_at timestamptz not null default timezone('utc', now());
-alter table public.notifications add column if not exists expires_at timestamptz;
 create index if not exists notifications_user_idx on public.notifications (user_id);
 create index if not exists notifications_user_unread_idx on public.notifications (user_id) where read = false;
 
@@ -43,15 +32,6 @@ create table if not exists public.audit_logs (
   user_agent text,
   created_at timestamptz not null default timezone('utc', now())
 );
-alter table public.audit_logs add column if not exists user_id uuid references public.profiles(id) on delete set null;
-alter table public.audit_logs add column if not exists module_id uuid references public.modules(id) on delete set null;
-alter table public.audit_logs add column if not exists action text;
-alter table public.audit_logs add column if not exists record_type text;
-alter table public.audit_logs add column if not exists record_id text;
-alter table public.audit_logs add column if not exists details jsonb;
-alter table public.audit_logs add column if not exists ip_address text;
-alter table public.audit_logs add column if not exists user_agent text;
-alter table public.audit_logs add column if not exists created_at timestamptz not null default timezone('utc', now());
 create index if not exists audit_logs_user_idx on public.audit_logs (user_id);
 create index if not exists audit_logs_created_idx on public.audit_logs (created_at desc);
 

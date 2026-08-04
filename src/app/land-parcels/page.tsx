@@ -9,21 +9,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Search, X, FolderOpen, Map, Ruler, Navigation } from 'lucide-react';
-import type { Json } from '@/lib/database.types';
 
 interface LandParcel {
   id: string;
   parcel_number: string;
   location: string | null;
   area_sqm: number | null;
-  coordinates: Json;
+  coordinates: string | null;
+  title_details: string | null;
   notes: string | null;
   case_id: string;
   created_at: string;
   cases?: {
     case_number: string;
     title: string | null;
-  } | null;
+  };
 }
 
 export default function LandParcelsPage() {
@@ -64,8 +64,8 @@ export default function LandParcelsPage() {
     return (
       parcel.parcel_number.toLowerCase().includes(query) ||
       parcel.location?.toLowerCase().includes(query) ||
-      parcel.cases?.case_number?.toLowerCase().includes(query) ||
-      parcel.notes?.toLowerCase().includes(query)
+      parcel.cases?.case_number.toLowerCase().includes(query) ||
+      parcel.title_details?.toLowerCase().includes(query)
     );
   });
 
@@ -235,9 +235,14 @@ export default function LandParcelsPage() {
                           <FolderOpen className="h-3 w-3" />
                           <span className="truncate">{parcel.cases?.case_number || 'Unknown'}</span>
                         </div>
+                        {parcel.title_details && (
+                          <div className="text-xs text-slate-500 truncate">
+                            Title: {parcel.title_details}
+                          </div>
+                        )}
                         {parcel.coordinates && (
                           <div className="text-xs text-slate-500 truncate">
-                            {typeof parcel.coordinates === 'string' ? parcel.coordinates : JSON.stringify(parcel.coordinates)}
+                            {parcel.coordinates}
                           </div>
                         )}
                       </div>

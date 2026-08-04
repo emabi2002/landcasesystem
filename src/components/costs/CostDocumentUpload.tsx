@@ -85,21 +85,27 @@ export function CostDocumentUpload({
       const fileName = `cost-docs/${costId}/${timestamp}-${file.name}`;
 
       // Upload to Supabase Storage
-      const { error: uploadError } = await supabase
+      const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from('case-documents')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
-      // Insert document record. file_url stores the private storage path; signed URLs are generated on demand.
+      // Get public URL
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('case-documents')
+        .getPublicUrl(fileName);
+
+      // Insert document record
       const { error: insertError } = await (supabase as any)
-        .from('cost_documents')
+        .from('litigation_cost_documents')
         .insert({
           cost_id: costId,
           document_name: file.name,
           document_type: documentType,
-          file_url: fileName,
+          file_url: publicUrl,
           file_size: file.size,
           mime_type: file.type,
           description: description || null,
@@ -130,15 +136,18 @@ export function CostDocumentUpload({
     try {
       // Delete from database
       const { error } = await (supabase as any)
-        .from('cost_documents')
+        .from('litigation_cost_documents')
         .delete()
         .eq('id', docId);
 
       if (error) throw error;
 
-      // Try to delete from private storage. fileUrl stores the storage path.
+      // Try to delete from storage (extract path from URL)
       try {
-        await supabase.storage.from('case-documents').remove([fileUrl]);
+        const urlParts = fileUrl.split('/case-documents/');
+        if (urlParts[1]) {
+          await supabase.storage.from('case-documents').remove([urlParts[1]]);
+        }
       } catch (storageErr) {
         console.warn('Could not delete file from storage:', storageErr);
       }

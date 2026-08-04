@@ -95,12 +95,15 @@ export function SearchWarrantDocuments({
         .upload(filePath, file, { cacheControl: '3600', upsert: false });
       if (upErr) throw upErr;
 
+      const { data: { publicUrl } } = supabase.storage
+        .from('case-documents')
+        .getPublicUrl(filePath);
+
       const { error: insErr } = await (supabase as any).from('documents').insert({
         case_id: caseId,
         search_warrant_id: warrantId,
         title: file.name,
-        file_url: filePath,
-        storage_path: filePath,
+        file_url: publicUrl,
         file_type: file.type || ext,
         file_size: file.size,
         document_type: docType,

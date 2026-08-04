@@ -5,7 +5,7 @@
 
 create table if not exists public.documents (
   id uuid primary key default gen_random_uuid(),
-  case_id uuid references public.cases(id) on delete restrict,
+  case_id uuid references public.cases(id) on delete cascade,
   title text not null,
   description text,
   file_url text not null,

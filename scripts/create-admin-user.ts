@@ -181,8 +181,7 @@ async function createAdminUser() {
     console.log('🔑 Password: <set-a-secure-password>');
     console.log('👥 Group: Super Admin');
     console.log('🔐 Permissions: Full access (if modules exist)\n');
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || '<your-application-url>';
-    console.log(`You can now login at: ${appUrl}/login\n`);
+    console.log('🚀 You can now login at: http://localhost:3000/login\n');
 
   } catch (error) {
     console.error('\n❌ ========================================');

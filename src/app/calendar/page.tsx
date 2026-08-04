@@ -76,9 +76,9 @@ interface EventItem {
   event_type: string;
   title: string;
   event_date: string;
-  location?: string | null;
-  case_id?: string | null;
-  cases?: { case_number: string; title: string | null } | null;
+  location?: string;
+  case_id?: string;
+  cases?: { case_number: string; title: string };
 }
 
 type EventTypeFilter = 'all' | 'hearing' | 'filing_deadline' | 'response_deadline' | 'meeting' | 'other';
@@ -207,7 +207,7 @@ export default function CalendarPage() {
       filtered = filtered.filter(e =>
         e.title.toLowerCase().includes(q) ||
         e.location?.toLowerCase().includes(q) ||
-        e.cases?.case_number?.toLowerCase().includes(q)
+        e.cases?.case_number.toLowerCase().includes(q)
       );
     }
 
@@ -434,7 +434,7 @@ export default function CalendarPage() {
       const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Events');
-      XLSX.writeFile(wb, `events_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+      XLSX.writeFile(wb, `calendar_events_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
       toast.success(`Exported ${filteredEvents.length} events`);
     } catch {
       toast.error('Export failed');
@@ -468,7 +468,7 @@ export default function CalendarPage() {
         headStyles: { fillColor: [139, 35, 50] },
       });
 
-      doc.save(`events_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+      doc.save(`calendar_events_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
       toast.success(`Exported ${filteredEvents.length} events`);
     } catch {
       toast.error('Export failed');

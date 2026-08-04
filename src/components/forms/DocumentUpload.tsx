@@ -21,7 +21,7 @@ export function DocumentUpload({ caseId, filingId, onUploadComplete, accept, max
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadedPath, setUploadedPath] = useState<string | null>(null);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -32,7 +32,7 @@ export function DocumentUpload({ caseId, filingId, onUploadComplete, accept, max
         return;
       }
       setSelectedFile(file);
-      setUploadedPath(null);
+      setUploadedUrl(null);
     }
   };
 
@@ -78,8 +78,13 @@ export function DocumentUpload({ caseId, filingId, onUploadComplete, accept, max
 
       if (error) throw error;
 
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('case-documents')
+        .getPublicUrl(filePath);
+
       setUploadProgress(100);
-      setUploadedPath(filePath);
+      setUploadedUrl(publicUrl);
 
       // Only save document record if we have a caseId
       if (caseId) {
@@ -88,8 +93,8 @@ export function DocumentUpload({ caseId, filingId, onUploadComplete, accept, max
           .insert({
             case_id: caseId,
             title: selectedFile.name,
-            file_url: filePath,
-            storage_path: filePath,
+            file_url: publicUrl,
+            file_path: filePath,
             file_type: fileExt,
             uploaded_by: user.id,
           });
@@ -98,7 +103,7 @@ export function DocumentUpload({ caseId, filingId, onUploadComplete, accept, max
         if (filingId) {
           await (supabase as any)
             .from('filings')
-            .update({ file_url: filePath })
+            .update({ file_url: publicUrl })
             .eq('id', filingId);
         }
       }
@@ -119,7 +124,7 @@ export function DocumentUpload({ caseId, filingId, onUploadComplete, accept, max
 
   const clearSelection = () => {
     setSelectedFile(null);
-    setUploadedPath(null);
+    setUploadedUrl(null);
     setUploadProgress(0);
   };
 
@@ -135,7 +140,7 @@ export function DocumentUpload({ caseId, filingId, onUploadComplete, accept, max
             disabled={uploading}
             accept={accept || ".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"}
           />
-          {selectedFile && !uploadedPath && (
+          {selectedFile && !uploadedUrl && (
             <Button
               type="button"
               variant="ghost"
@@ -152,7 +157,7 @@ export function DocumentUpload({ caseId, filingId, onUploadComplete, accept, max
         </p>
       </div>
 
-      {selectedFile && !uploadedPath && (
+      {selectedFile && !uploadedUrl && (
         <div className="p-4 bg-slate-50 rounded-lg border flex items-center justify-between">
           <div className="flex items-center gap-3">
             <File className="h-8 w-8 text-slate-400" />
@@ -183,7 +188,7 @@ export function DocumentUpload({ caseId, filingId, onUploadComplete, accept, max
         </div>
       )}
 
-      {uploadedPath && (
+      {uploadedUrl && (
         <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200 flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-emerald-600" />
           <div className="flex-1">

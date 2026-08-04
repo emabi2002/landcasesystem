@@ -59,6 +59,18 @@ export function useDashboardStats(): DashboardStatsHook {
       const cases = casesData.cases;
       console.log(`Dashboard: Loaded ${cases?.length || 0} cases from database via API`);
 
+      const { data: events } = await supabase
+        .from('events')
+        .select('*')
+        .gte('event_date', new Date().toISOString())
+        .lte('event_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
+
+      const { data: tasks } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('status', 'pending')
+        .lt('due_date', new Date().toISOString());
+
       const now = new Date();
       const thisMonthStart = startOfMonth(now);
       const thisYearStart = startOfYear(now);
@@ -88,8 +100,8 @@ export function useDashboardStats(): DashboardStatsHook {
           'Over 10 years': 0,
         },
         monthlyTrend: [],
-        upcomingEvents: casesData.upcomingEvents || 0,
-        overdueTasks: casesData.overdueTasks || 0,
+        upcomingEvents: events?.length || 0,
+        overdueTasks: tasks?.length || 0,
         workflowProgress: {
           registered: typedCases?.filter(c => (c as any).workflow_status === 'registered').length || 0,
           directions: typedCases?.filter(c => (c as any).workflow_status === 'directions').length || 0,
@@ -177,7 +189,7 @@ export function useDashboardStats(): DashboardStatsHook {
       try {
         const [directionsRes, delegationsRes, filingsRes, complianceRes] = await Promise.all([
           supabase.from('directions').select('case_id', { count: 'exact', head: true }),
-          supabase.from('case_assignments').select('case_id', { count: 'exact', head: true }),
+          supabase.from('case_delegations').select('case_id', { count: 'exact', head: true }),
           supabase.from('filings').select('case_id', { count: 'exact', head: true }),
           supabase.from('compliance_tracking').select('case_id', { count: 'exact', head: true }),
         ]);

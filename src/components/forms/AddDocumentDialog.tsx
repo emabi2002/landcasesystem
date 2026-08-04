@@ -76,14 +76,14 @@ export function AddDocumentDialog({ caseId, onSuccess, open: controlledOpen, onO
         return;
       }
 
-      console.log('Starting document upload for case:', caseId);
-      console.log('File:', file.name, 'Size:', file.size, 'Type:', file.type);
+      console.log('📤 Starting document upload for case:', caseId);
+      console.log('📄 File:', file.name, 'Size:', file.size, 'Type:', file.type);
 
       // Step 2: Upload file to storage
       const bucketName = 'case-documents';
       const fileName = `${caseId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
-      console.log('Uploading to bucket:', bucketName, 'Path:', fileName);
+      console.log('📦 Uploading to bucket:', bucketName, 'Path:', fileName);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucketName)
@@ -93,7 +93,7 @@ export function AddDocumentDialog({ caseId, onSuccess, open: controlledOpen, onO
         });
 
       if (uploadError) {
-        console.error('Storage upload error:', uploadError);
+        console.error('❌ Storage upload error:', uploadError);
 
         // Check for specific storage errors
         if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('bucket')) {
@@ -113,24 +113,36 @@ export function AddDocumentDialog({ caseId, onSuccess, open: controlledOpen, onO
         return;
       }
 
-      console.log('File uploaded successfully:', uploadData);
+      console.log('✅ File uploaded successfully:', uploadData);
 
-      // Step 3: Save document record to database. The bucket is private, so file_url stores the storage path.
-      const fileUrl = fileName;
+      // Step 3: Get the public URL
+      const { data: urlData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(fileName);
 
+      const fileUrl = urlData?.publicUrl;
+
+      if (!fileUrl) {
+        console.error('❌ Could not get public URL');
+        toast.error('Failed to get file URL after upload');
+        return;
+      }
+
+      console.log('🔗 File URL:', fileUrl);
+
+      // Step 4: Save document record to database
       const documentRecord = {
         case_id: caseId,
         title: formData.title.trim(),
         description: formData.description?.trim() || null,
         file_url: fileUrl,
-        storage_path: fileName,
         file_type: file.type || 'application/octet-stream',
         file_size: file.size,
         document_type: formData.document_type,
         uploaded_by: user.id,
       };
 
-      console.log('Saving document record:', documentRecord);
+      console.log('💾 Saving document record:', documentRecord);
 
       const { data: insertData, error: dbError } = await (supabase as any)
         .from('documents')
@@ -139,7 +151,7 @@ export function AddDocumentDialog({ caseId, onSuccess, open: controlledOpen, onO
         .single();
 
       if (dbError) {
-        console.error('Database error:', dbError);
+        console.error('❌ Database error:', dbError);
 
         // Try to clean up the uploaded file since DB insert failed
         try {

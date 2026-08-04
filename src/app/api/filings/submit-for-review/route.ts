@@ -1,42 +1,120 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { permissionErrorResponse, requireModulePermission } from '@/lib/auth/require-permission';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { apiFailure, apiSuccess, createRequestId, databaseErrorToHttp } from '@/lib/api/responses';
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+import { permissionErrorResponse, requireAnyModulePermission } from '@/lib/auth/require-permission';
 
 export async function POST(request: NextRequest) {
-  const requestId = createRequestId();
-
   try {
-    await requireModulePermission('filings', 'update');
+    const { user, admin } = await requireAnyModulePermission([
+      { moduleKey: 'filings', action: 'approve' },
+    ]);
 
-    const body = await request.json().catch(() => null);
-    const caseId = body && typeof body === 'object' && !Array.isArray(body)
-      ? (body as { case_id?: unknown }).case_id
-      : null;
+    const body = await request.json();
+    const { case_id } = body;
 
-    if (typeof caseId !== 'string' || !UUID_PATTERN.test(caseId)) {
+    if (typeof case_id !== 'string' || !case_id.trim()) {
+      return NextResponse.json({ error: 'Case ID is required' }, { status: 400 });
+    }
+
+    const { data: caseData, error: caseError } = await admin
+      .from('cases' as never)
+      .select('workflow_state, assigned_officer_id' as never)
+      .eq('id' as never, case_id as never)
+      .single();
+
+    if (caseError || !caseData) {
+      return NextResponse.json({ error: 'Case not found' }, { status: 404 });
+    }
+
+    const caseRecord = caseData as { workflow_state?: string; assigned_officer_id?: string };
+    if (caseRecord.workflow_state !== 'DRAFTING') {
       return NextResponse.json(
-        apiFailure('VALIDATION_FAILED', 'A valid case ID is required.', requestId, { case_id: ['A valid case ID is required.'] }),
-        { status: 400 },
+        { error: 'Case must be in DRAFTING state to submit for review' },
+        { status: 400 }
       );
     }
 
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.rpc('submit_filings_for_review' as never, {
-      p_case_id: caseId,
-    } as never);
+    if (caseRecord.assigned_officer_id && caseRecord.assigned_officer_id !== user.id) {
+      return NextResponse.json(
+        { error: 'You are not assigned to this case' },
+        { status: 403 }
+      );
+    }
 
-    if (error) throw error;
+    const { data: draftFilings, error: filingsError } = await admin
+      .from('filings' as never)
+      .select('id' as never)
+      .eq('case_id' as never, case_id as never)
+      .in('status' as never, ['draft', 'prepared'] as never);
 
-    return NextResponse.json(apiSuccess(data));
+    if (filingsError) throw filingsError;
+
+    if (!draftFilings || draftFilings.length === 0) {
+      return NextResponse.json(
+        { error: 'No draft filings found to submit' },
+        { status: 400 }
+      );
+    }
+
+    await admin
+      .from('filings' as never)
+      .update({ status: 'under_review' } as never)
+      .eq('case_id' as never, case_id as never)
+      .in('status' as never, ['draft', 'prepared'] as never);
+
+    await admin
+      .from('cases' as never)
+      .update({
+        workflow_state: 'UNDER_REVIEW',
+        updated_by: user.id,
+        updated_at: new Date().toISOString()
+      } as never)
+      .eq('id' as never, case_id as never);
+
+    await admin
+      .from('case_history' as never)
+      .insert({
+        case_id,
+        action: 'submitted_for_review',
+        description: `${draftFilings.length} filing(s) submitted for manager review`,
+        performed_by: user.id,
+        workflow_state_from: 'DRAFTING',
+        workflow_state_to: 'UNDER_REVIEW',
+        metadata: {
+          filing_count: draftFilings.length
+        }
+      } as never);
+
+    const { data: managers } = await admin
+      .from('profiles' as never)
+      .select('id' as never)
+      .in('role' as never, ['manager_legal_services', 'senior_legal_officer_litigation'] as never);
+
+    if (managers && managers.length > 0) {
+      const notifications = managers.map((manager: { id: string }) => ({
+        user_id: manager.id,
+        case_id,
+        title: 'Filings Ready for Review',
+        message: `${draftFilings.length} filing(s) have been submitted for your review`,
+        type: 'case_update'
+      }));
+
+      await admin
+        .from('notifications' as never)
+        .insert(notifications as never);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Filings submitted for review successfully',
+      filing_count: draftFilings.length
+    });
   } catch (error) {
     const response = permissionErrorResponse(error);
     if (response) return response;
 
-    console.error('Error submitting for review', { requestId });
-    const mapped = databaseErrorToHttp(error);
-    return NextResponse.json(apiFailure(mapped.code, mapped.message, requestId), { status: mapped.status });
+    console.error('Error submitting for review');
+    return NextResponse.json(
+      { error: 'Failed to submit for review' },
+      { status: 500 }
+    );
   }
 }

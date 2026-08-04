@@ -19,31 +19,22 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Link as LinkIcon, Unlink, Eye, AlertTriangle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import type { Json } from '@/lib/database.types';
 
 type LinkedRecommendation = {
   id: string;
   recommendation_id: string;
   link_type: string;
-  link_context: string | null;
-  snapshot_data: Json;
+  link_status: string;
+  link_context: string;
+  link_notes: string;
+  recommendation_title: string;
+  recommendation_priority: string;
+  recommendation_risk_rating: string;
+  recommendation_region: string;
+  recommendation_parcel_ref: string;
+  linked_at: string;
   created_at: string;
 };
-
-type RecommendationSnapshot = {
-  title?: string;
-  recommendation_title?: string;
-  priority?: string;
-  risk_rating?: string;
-  region?: string;
-  parcel_ref?: string;
-};
-
-function getSnapshot(link: LinkedRecommendation): RecommendationSnapshot {
-  return link.snapshot_data && typeof link.snapshot_data === 'object' && !Array.isArray(link.snapshot_data)
-    ? (link.snapshot_data as RecommendationSnapshot)
-    : {};
-}
 
 type LinkedRecommendationsProps = {
   caseId: string;
@@ -67,8 +58,8 @@ export function LinkedRecommendations({ caseId }: LinkedRecommendationsProps) {
         .from('recommendation_links')
         .select('*')
         .eq('legal_case_id', caseId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .eq('link_status', 'linked')
+        .order('linked_at', { ascending: false });
 
       if (error) throw error;
       setLinks(data || []);
@@ -181,76 +172,67 @@ export function LinkedRecommendations({ caseId }: LinkedRecommendationsProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {links.map((link) => {
-              const snapshot = getSnapshot(link);
-              const title = snapshot.recommendation_title || snapshot.title || 'Untitled Recommendation';
-              const riskRating = snapshot.risk_rating;
-              const priority = snapshot.priority;
-              const region = snapshot.region;
-              const parcelRef = snapshot.parcel_ref;
-
-              return (
-                <div
-                  key={link.id}
-                  className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-[#4A4284] mb-2">
-                        {title}
-                      </h4>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {getLinkTypeBadge(link.link_type)}
-                        {riskRating && (
-                          <Badge className={getRiskBadgeColor(riskRating)}>
-                            {riskRating} Risk
-                          </Badge>
-                        )}
-                        {priority && (
-                          <Badge variant="outline">{priority} Priority</Badge>
-                        )}
-                      </div>
+            {links.map((link) => (
+              <div
+                key={link.id}
+                className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-[#4A4284] mb-2">
+                      {link.recommendation_title || 'Untitled Recommendation'}
+                    </h4>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {getLinkTypeBadge(link.link_type)}
+                      {link.recommendation_risk_rating && (
+                        <Badge className={getRiskBadgeColor(link.recommendation_risk_rating)}>
+                          {link.recommendation_risk_rating} Risk
+                        </Badge>
+                      )}
+                      {link.recommendation_priority && (
+                        <Badge variant="outline">{link.recommendation_priority} Priority</Badge>
+                      )}
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => {
-                        setSelectedLink(link);
-                        setUnlinkDialogOpen(true);
-                      }}
-                    >
-                      <Unlink className="h-4 w-4 mr-2" />
-                      Unlink
-                    </Button>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => {
+                      setSelectedLink(link);
+                      setUnlinkDialogOpen(true);
+                    }}
+                  >
+                    <Unlink className="h-4 w-4 mr-2" />
+                    Unlink
+                  </Button>
+                </div>
 
-                  {link.link_context && (
-                    <div className="bg-gray-50 p-3 rounded mb-3">
-                      <p className="text-xs font-semibold text-gray-600 mb-1">Link Context:</p>
-                      <p className="text-sm text-gray-700">{link.link_context}</p>
+                {link.link_context && (
+                  <div className="bg-gray-50 p-3 rounded mb-3">
+                    <p className="text-xs font-semibold text-gray-600 mb-1">Link Context:</p>
+                    <p className="text-sm text-gray-700">{link.link_context}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-600">
+                  {link.recommendation_region && (
+                    <div>
+                      <span className="font-semibold">Region:</span> {link.recommendation_region}
                     </div>
                   )}
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-600">
-                    {region && (
-                      <div>
-                        <span className="font-semibold">Region:</span> {region}
-                      </div>
-                    )}
-                    {parcelRef && (
-                      <div>
-                        <span className="font-semibold">Parcel:</span> {parcelRef}
-                      </div>
-                    )}
+                  {link.recommendation_parcel_ref && (
                     <div>
-                      <span className="font-semibold">Linked:</span>{' '}
-                      {format(new Date(link.created_at), 'MMM d, yyyy')}
+                      <span className="font-semibold">Parcel:</span> {link.recommendation_parcel_ref}
                     </div>
+                  )}
+                  <div>
+                    <span className="font-semibold">Linked:</span>{' '}
+                    {format(new Date(link.linked_at), 'MMM d, yyyy')}
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

@@ -13,25 +13,11 @@ create table if not exists public.profiles (
   region text,
   employee_id text,
   active boolean not null default true,
-  -- legacy_role stores source role labels for migration mapping only and must not be used for authorization.
+  -- legacy_role is retained only for migration mapping and must not be used for authorization.
   legacy_role text,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
-
--- Existing UAT databases may already have public.profiles from earlier setup.
--- Add canonical columns forward-only before creating indexes/triggers.
-alter table public.profiles add column if not exists full_name text;
-alter table public.profiles add column if not exists email citext;
-alter table public.profiles add column if not exists phone text;
-alter table public.profiles add column if not exists job_title text;
-alter table public.profiles add column if not exists department text;
-alter table public.profiles add column if not exists region text;
-alter table public.profiles add column if not exists employee_id text;
-alter table public.profiles add column if not exists active boolean not null default true;
-alter table public.profiles add column if not exists legacy_role text;
-alter table public.profiles add column if not exists created_at timestamptz not null default timezone('utc', now());
-alter table public.profiles add column if not exists updated_at timestamptz not null default timezone('utc', now());
 
 create unique index if not exists profiles_employee_id_key
   on public.profiles (employee_id)

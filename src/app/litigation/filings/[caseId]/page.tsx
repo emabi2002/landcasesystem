@@ -21,13 +21,12 @@ type FilingStatus = 'draft' | 'prepared' | 'under_review' | 'changes_requested' 
 interface Filing {
   id: string;
   filing_type: string;
-  filing_title: string | null;
+  filing_title: string;
   filing_subtype: string | null;
-  title: string | null;
   description: string | null;
   draft_file_url: string | null;
-  file_url: string | null;
-  status: string;
+  sealed_file_url: string | null;
+  status: FilingStatus;
   court_filing_date: string | null;
   created_at: string;
 }
@@ -35,9 +34,9 @@ interface Filing {
 interface CaseInfo {
   id: string;
   case_number: string;
-  title: string | null;
+  title: string;
   workflow_state: string;
-  assigned_officer_id: string | null;
+  assigned_officer_id: string;
 }
 
 export default function FilingsManagementPage() {
@@ -49,16 +48,6 @@ export default function FilingsManagementPage() {
   const [caseInfo, setCaseInfo] = useState<CaseInfo | null>(null);
   const [filings, setFilings] = useState<Filing[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
-  const [filedDialogOpen, setFiledDialogOpen] = useState(false);
-  const [selectedFiling, setSelectedFiling] = useState<Filing | null>(null);
-  const [reviewAction, setReviewAction] = useState<'approve' | 'return'>('approve');
-  const [reviewComment, setReviewComment] = useState('');
-  const [filedForm, setFiledForm] = useState({
-    court_filing_date: '',
-    court_reference: '',
-    file_url: '',
-  });
   const [submitting, setSubmitting] = useState(false);
 
   // Form state for creating filing
@@ -78,6 +67,7 @@ export default function FilingsManagementPage() {
     try {
       setLoading(true);
 
+      // Load case info
       const { data: caseData, error: caseError } = await supabase
         .from('cases')
         .select('id, case_number, title, workflow_state, assigned_officer_id')
@@ -86,6 +76,7 @@ export default function FilingsManagementPage() {
 
       if (caseError) throw caseError;
 
+      // Load filings
       const { data: filingsData, error: filingsError } = await supabase
         .from('filings')
         .select('*')
@@ -183,82 +174,7 @@ export default function FilingsManagementPage() {
     }
   };
 
-  const handleReviewFiling = async () => {
-    if (!selectedFiling) return;
-    if (reviewAction === 'return' && !reviewComment.trim()) {
-      toast.error('A return comment is required');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const response = await fetch(`/api/filings/${selectedFiling.id}/review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: reviewAction, comment: reviewComment }),
-      });
-      const result = await response.json();
-      if (!result.success) throw new Error(result.error?.message || 'Review action failed');
-      toast.success(reviewAction === 'approve' ? 'Filing approved for filing' : 'Filing returned for correction');
-      setReviewDialogOpen(false);
-      setSelectedFiling(null);
-      setReviewComment('');
-      await loadData();
-    } catch (error) {
-      console.error('Error reviewing filing:', error);
-      toast.error(error instanceof Error ? error.message : 'Review action failed');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleRecordFiled = async () => {
-    if (!selectedFiling) return;
-    if (!filedForm.court_filing_date) {
-      toast.error('Court filing date is required');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const response = await fetch(`/api/filings/${selectedFiling.id}/filed`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(filedForm),
-      });
-      const result = await response.json();
-      if (!result.success) throw new Error(result.error?.message || 'Failed to record filing');
-      toast.success('Filing recorded as filed');
-      setFiledDialogOpen(false);
-      setSelectedFiling(null);
-      setFiledForm({ court_filing_date: '', court_reference: '', file_url: '' });
-      await loadData();
-    } catch (error) {
-      console.error('Error recording filed filing:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to record filing');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const openReviewDialog = (filing: Filing, action: 'approve' | 'return') => {
-    setSelectedFiling(filing);
-    setReviewAction(action);
-    setReviewComment('');
-    setReviewDialogOpen(true);
-  };
-
-  const openFiledDialog = (filing: Filing) => {
-    setSelectedFiling(filing);
-    setFiledForm({
-      court_filing_date: new Date().toISOString().split('T')[0],
-      court_reference: '',
-      file_url: filing.file_url || '',
-    });
-    setFiledDialogOpen(true);
-  };
-
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: FilingStatus) => {
     const variants: Record<FilingStatus, { className: string; icon: any }> = {
       draft: { className: 'bg-gray-100 text-gray-800', icon: FileText },
       prepared: { className: 'bg-blue-100 text-blue-800', icon: FileText },
@@ -268,7 +184,7 @@ export default function FilingsManagementPage() {
       filed: { className: 'bg-purple-100 text-purple-800', icon: CheckCircle }
     };
 
-    const variant = variants[status as FilingStatus] || variants.draft;
+    const variant = variants[status];
     const Icon = variant.icon;
 
     return (
@@ -278,8 +194,6 @@ export default function FilingsManagementPage() {
       </Badge>
     );
   };
-
-  const normaliseStatus = (status: string) => status.toUpperCase();
 
   if (loading) {
     return (
@@ -397,8 +311,8 @@ export default function FilingsManagementPage() {
                     </div>
                     <div>
                       <div className="text-muted-foreground mb-1">Sealed Document</div>
-                      {filing.file_url ? (
-                        <a href={filing.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                      {filing.sealed_file_url ? (
+                        <a href={filing.sealed_file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                           View Sealed
                         </a>
                       ) : (
@@ -411,31 +325,9 @@ export default function FilingsManagementPage() {
                     </div>
                   </div>
 
-                  {normaliseStatus(filing.status) === 'UNDER_REVIEW' && (
-                    <div className="mt-4 pt-4 border-t flex flex-wrap gap-2">
-                      <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => openReviewDialog(filing, 'approve')}>
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Approve for Filing
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => openReviewDialog(filing, 'return')}>
-                        <AlertCircle className="h-4 w-4 mr-2" />
-                        Return for Correction
-                      </Button>
-                    </div>
-                  )}
-
-                  {normaliseStatus(filing.status) === 'APPROVED_FOR_FILING' && (
+                  {filing.status === 'approved' && !filing.sealed_file_url && (
                     <div className="mt-4 pt-4 border-t">
-                      <Button size="sm" variant="outline" onClick={() => openFiledDialog(filing)}>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Record as Filed
-                      </Button>
-                    </div>
-                  )}
-
-                  {filing.status === 'approved' && !filing.file_url && (
-                    <div className="mt-4 pt-4 border-t">
-                      <Button size="sm" variant="outline" onClick={() => openFiledDialog(filing)}>
+                      <Button size="sm" variant="outline">
                         <Upload className="h-4 w-4 mr-2" />
                         Upload Sealed Document
                       </Button>
@@ -536,77 +428,6 @@ export default function FilingsManagementPage() {
               <Button onClick={handleCreateFiling} disabled={submitting}>
                 {submitting ? 'Creating...' : 'Create Filing'}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{reviewAction === 'approve' ? 'Approve Filing' : 'Return Filing for Correction'}</DialogTitle>
-              <DialogDescription>
-                {reviewAction === 'approve'
-                  ? 'Approve this filing so it can be recorded as filed with the court.'
-                  : 'Return this filing to drafting with a correction comment.'}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3">
-              <Label htmlFor="review_comment">Review Comment {reviewAction === 'return' ? '*' : '(Optional)'}</Label>
-              <Textarea
-                id="review_comment"
-                value={reviewComment}
-                onChange={(event) => setReviewComment(event.target.value)}
-                rows={4}
-                placeholder="Add review notes..."
-              />
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setReviewDialogOpen(false)} disabled={submitting}>Cancel</Button>
-              <Button onClick={handleReviewFiling} disabled={submitting}>
-                {submitting ? 'Saving...' : reviewAction === 'approve' ? 'Approve' : 'Return'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={filedDialogOpen} onOpenChange={setFiledDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Record Court Filing</DialogTitle>
-              <DialogDescription>Record the court filing date and reference for this approved filing.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="court_filing_date">Court Filing Date *</Label>
-                <Input
-                  id="court_filing_date"
-                  type="date"
-                  value={filedForm.court_filing_date}
-                  onChange={(event) => setFiledForm((prev) => ({ ...prev, court_filing_date: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="court_reference">Court Reference</Label>
-                <Input
-                  id="court_reference"
-                  value={filedForm.court_reference}
-                  onChange={(event) => setFiledForm((prev) => ({ ...prev, court_reference: event.target.value }))}
-                  placeholder="Court filing reference"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="file_url">Filed Document URL / Storage Path</Label>
-                <Input
-                  id="file_url"
-                  value={filedForm.file_url}
-                  onChange={(event) => setFiledForm((prev) => ({ ...prev, file_url: event.target.value }))}
-                  placeholder="Optional filed document URL or storage path"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setFiledDialogOpen(false)} disabled={submitting}>Cancel</Button>
-              <Button onClick={handleRecordFiled} disabled={submitting}>{submitting ? 'Saving...' : 'Record Filed'}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

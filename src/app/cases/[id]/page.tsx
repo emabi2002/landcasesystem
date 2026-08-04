@@ -7,7 +7,6 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 import { supabase } from '@/lib/supabase';
-import { CaseWorkflowState, CASE_WORKFLOW_STATES, getAvailableWorkflowTransitions } from '@/lib/workflow/case-workflow';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,6 +47,7 @@ import { CaseClosureDialog } from '@/components/forms/CaseClosureDialog';
 import {
   ArrowLeft,
   ArrowRight,
+  Edit,
   FileText,
   Users,
   MapPin,
@@ -57,12 +57,14 @@ import {
   Upload,
   Plus,
   Edit2,
+  MousePointerClick,
+  Link as LinkIcon,
+  Bell,
   Send,
   DollarSign,
   Gavel,
   Archive,
   Scale,
-  Bell,
 } from 'lucide-react';
 import { WorkflowStepper, getWorkflowStepsFromStatus } from '@/components/dashboard/WorkflowStepper';
 import { CaseTimeline } from '@/components/cases/CaseTimeline';
@@ -77,7 +79,6 @@ interface CaseData {
   title: string | null;
   description?: string | null;
   status: string;
-  workflow_state?: string | null;
   case_type: string;
   priority: string;
   region?: string | null;
@@ -100,8 +101,7 @@ interface DocumentItem {
   description?: string | null;
   uploaded_at: string;
   file_type?: string | null;
-  storage_path?: string | null;
-  file_url?: string | null;
+  file_path?: string | null;
 }
 
 interface TaskItem {
@@ -174,42 +174,27 @@ interface CourtOrder {
 }
 
 /* ---------- Workflow stage helpers ---------- */
-const WORKFLOW_STAGE_LABELS: Record<CaseWorkflowState, string> = {
-  REGISTERED: 'Registered',
-  ASSIGNED: 'Assigned',
-  REGISTRATION_COMPLETED: 'Registration Complete',
-  DRAFTING: 'Drafting',
-  UNDER_REVIEW: 'Under Review',
-  APPROVED_FOR_FILING: 'Approved for Filing',
-  FILED: 'Filed',
-  COMPLIANCE: 'Compliance',
-  READY_FOR_CLOSURE: 'Ready for Closure',
-  CLOSED: 'Closed',
+const WORKFLOW_STAGES: { value: string; label: string }[] = [
+  { value: 'under_review', label: 'Registered' },
+  { value: 'assigned', label: 'Assigned' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'in_court', label: 'Directions' },
+  { value: 'hearing', label: 'Hearing' },
+  { value: 'judgment', label: 'Judgment' },
+  { value: 'compliance', label: 'Compliance' },
+];
+
+// Normalise DB status values that share a stage with a canonical value above.
+const STAGE_ALIASES: Record<string, string> = {
+  registered: 'under_review',
+  directions: 'in_court',
+  mediation: 'hearing',
+  tribunal: 'hearing',
 };
 
-const LEGACY_STATUS_TO_WORKFLOW: Record<string, CaseWorkflowState> = {
-  registered: 'REGISTERED',
-  under_review: 'REGISTERED',
-  assigned: 'ASSIGNED',
-  in_progress: 'REGISTRATION_COMPLETED',
-  in_court: 'DRAFTING',
-  hearing: 'FILED',
-  judgment: 'READY_FOR_CLOSURE',
-  compliance: 'COMPLIANCE',
-  ready_for_closure: 'READY_FOR_CLOSURE',
-  closed: 'CLOSED',
-  settled: 'CLOSED',
-};
-
-const canonicalStage = (caseData: CaseData): CaseWorkflowState => {
-  const workflowState = caseData.workflow_state;
-  if (workflowState && CASE_WORKFLOW_STATES.includes(workflowState as CaseWorkflowState)) {
-    return workflowState as CaseWorkflowState;
-  }
-  return LEGACY_STATUS_TO_WORKFLOW[caseData.status] ?? 'REGISTERED';
-};
-
-const stageLabel = (state: string) => WORKFLOW_STAGE_LABELS[state as CaseWorkflowState] ?? state;
+const canonicalStage = (status: string) => STAGE_ALIASES[status] ?? status;
+const stageLabel = (status: string) =>
+  WORKFLOW_STAGES.find((s) => s.value === canonicalStage(status))?.label ?? status;
 
 /* ---------- Component ---------- */
 export default function CaseDetailPage() {
@@ -233,18 +218,21 @@ export default function CaseDetailPage() {
   const [pendingStage, setPendingStage] = useState<{ value: string; label: string } | null>(null);
   const [timelineKey, setTimelineKey] = useState(0);
 
+  // Dialog states for programmatic control
   const [partyDialogOpen, setPartyDialogOpen] = useState(false);
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [landParcelDialogOpen, setLandParcelDialogOpen] = useState(false);
 
+  // Edit dialog states
   const [editPartyDialogOpen, setEditPartyDialogOpen] = useState(false);
   const [editDocumentDialogOpen, setEditDocumentDialogOpen] = useState(false);
   const [editTaskDialogOpen, setEditTaskDialogOpen] = useState(false);
   const [editEventDialogOpen, setEditEventDialogOpen] = useState(false);
   const [editLandParcelDialogOpen, setEditLandParcelDialogOpen] = useState(false);
 
+  // Selected items for editing
   const [selectedParty, setSelectedParty] = useState<Party | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<DocumentItem | null>(null);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
@@ -258,6 +246,7 @@ export default function CaseDetailPage() {
 
   const loadCaseData = async () => {
     try {
+      // Case
       const { data: caseDetail, error: caseError } = await supabase
         .from('cases')
         .select('*')
@@ -267,6 +256,7 @@ export default function CaseDetailPage() {
       if (caseError) throw caseError;
       setCaseData(caseDetail as CaseData);
 
+      // Related
       const [
         { data: partiesData },
         { data: documentsData },
@@ -325,27 +315,36 @@ export default function CaseDetailPage() {
     return variants[status] || { className: 'bg-gray-100 text-gray-800', label: status };
   };
 
-  const persistStageChange = async (targetState: string, description: string) => {
-    const response = await fetch(`/api/cases/${caseId}/workflow`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        target_state: targetState,
-        comment: description,
-      }),
-    });
+  // Core write: update the case status and record an audit-trail entry (also shown on the Timeline).
+  const persistStageChange = async (newStatus: string, description: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
 
-    const result = await response.json();
-    if (!result.success) {
-      throw new Error(result.error?.message || 'Failed to update case workflow');
+    const { error } = await (supabase as any)
+      .from('cases')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', caseId);
+    if (error) throw error;
+
+    // Best-effort audit trail entry (picked up by the Case Timeline as a status change)
+    try {
+      await (supabase as any).from('case_history').insert({
+        case_id: caseId,
+        action: 'Stage Updated',
+        description,
+        performed_by: user?.id ?? null,
+      });
+    } catch {
+      // history table is optional; ignore failures
     }
   };
 
+  // Open the confirmation dialog for a manual stage change.
   const requestStageChange = (newStatus: string) => {
-    if (!caseData || !newStatus || canonicalStage(caseData) === newStatus) return;
+    if (!caseData || !newStatus || canonicalStage(caseData.status) === newStatus) return;
     setPendingStage({ value: newStatus, label: stageLabel(newStatus) });
   };
 
+  // Runs after the user confirms in the dialog.
   const confirmStageChange = async () => {
     if (!caseData || !pendingStage) return;
     const target = pendingStage;
@@ -364,7 +363,23 @@ export default function CaseDetailPage() {
     }
   };
 
+  // Auto-advance the case when a key milestone happens. Only ever moves the case forward.
+  const maybeAutoAdvance = async (targetStatus: string, reason: string) => {
+    if (!caseData) return;
+    const curIdx = WORKFLOW_STAGES.findIndex((s) => s.value === canonicalStage(caseData.status));
+    const targetIdx = WORKFLOW_STAGES.findIndex((s) => s.value === targetStatus);
+    if (targetIdx < 0 || targetIdx <= curIdx) return; // never move backward
+    try {
+      await persistStageChange(targetStatus, `Auto-advanced to "${stageLabel(targetStatus)}" (${reason})`);
+      toast.info(`Stage auto-advanced to ${stageLabel(targetStatus)}`);
+    } catch (error) {
+      console.error('Auto-advance failed:', error);
+    }
+  };
+
+  // Registering a court order moves the case to the Judgment stage.
   const handleCourtOrderRegistered = async () => {
+    await maybeAutoAdvance('judgment', 'court order registered');
     await loadCaseData();
     setTimelineKey((k) => k + 1);
   };
@@ -425,14 +440,18 @@ export default function CaseDetailPage() {
     );
   }
 
-  const currentStage = canonicalStage(caseData);
-  const availableTransitions = getAvailableWorkflowTransitions(currentStage);
-  const nextStage = availableTransitions[0] ?? null;
-  const isClosedOrSettled = currentStage === 'CLOSED';
+  const currentStage = canonicalStage(caseData.status);
+  const currentStageIdx = WORKFLOW_STAGES.findIndex((s) => s.value === currentStage);
+  const nextStage =
+    currentStageIdx >= 0 && currentStageIdx < WORKFLOW_STAGES.length - 1
+      ? WORKFLOW_STAGES[currentStageIdx + 1]
+      : null;
+  const isClosedOrSettled = caseData.status === 'closed' || caseData.status === 'settled';
 
   return (
     <AppLayout>
       <div className="p-6 lg:p-8 space-y-6">
+        {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <Link href="/cases">
@@ -462,6 +481,7 @@ export default function CaseDetailPage() {
           </div>
         </div>
 
+        {/* Case Info Cards */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="p-4">
@@ -491,6 +511,7 @@ export default function CaseDetailPage() {
           </Card>
         </div>
 
+        {/* Workflow Progress Stepper */}
         <Card data-tour="case-workflow" className="border-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
@@ -505,20 +526,21 @@ export default function CaseDetailPage() {
             />
 
             {!isClosedOrSettled && (
-              <div
-                data-tour="case-stage"
-                className="mt-10 pt-4 border-t border-slate-200 flex flex-col gap-3 sm:flex-row sm:items-center"
-              >
+              <div data-tour="case-stage" className="mt-10 pt-4 border-t border-slate-200 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <span className="text-sm font-medium text-slate-700">Update stage:</span>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Select value={currentStage} onValueChange={requestStageChange} disabled={updatingStage}>
-                    <SelectTrigger className="h-9 w-[230px]">
-                      <SelectValue placeholder="Select workflow state" />
+                  <Select
+                    value={currentStageIdx >= 0 ? currentStage : ''}
+                    onValueChange={requestStageChange}
+                    disabled={updatingStage}
+                  >
+                    <SelectTrigger className="h-9 w-[190px]">
+                      <SelectValue placeholder="Select stage" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableTransitions.map((transition) => (
-                        <SelectItem key={transition.to} value={transition.to}>
-                          {stageLabel(transition.to)}
+                      {WORKFLOW_STAGES.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>
+                          {s.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -526,11 +548,11 @@ export default function CaseDetailPage() {
                   {nextStage && (
                     <Button
                       size="sm"
-                      onClick={() => requestStageChange(nextStage.to)}
+                      onClick={() => requestStageChange(nextStage.value)}
                       disabled={updatingStage}
                       className="gap-1 bg-blue-600 hover:bg-blue-700"
                     >
-                      {updatingStage ? 'Updating…' : `Advance to ${stageLabel(nextStage.to)}`}
+                      {updatingStage ? 'Updating…' : `Advance to ${nextStage.label}`}
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   )}
@@ -543,6 +565,7 @@ export default function CaseDetailPage() {
           </CardContent>
         </Card>
 
+        {/* Tabs */}
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList data-tour="case-tabs" className="flex flex-wrap gap-1 h-auto p-1">
             <TabsTrigger value="overview" className="text-xs px-3">Overview</TabsTrigger>
@@ -574,6 +597,7 @@ export default function CaseDetailPage() {
             <TabsTrigger value="history" className="text-xs px-3">History</TabsTrigger>
           </TabsList>
 
+          {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <Card>
@@ -601,7 +625,9 @@ export default function CaseDetailPage() {
                               >
                                 <div className="flex-1">
                                   <div className="font-medium text-sm">{party.name}</div>
-                                  <div className="text-xs text-slate-500 capitalize">{party.party_type}</div>
+                                  <div className="text-xs text-slate-500 capitalize">
+                                    {party.party_type}
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <Badge variant="outline" className="text-xs">
@@ -679,39 +705,42 @@ export default function CaseDetailPage() {
                     <p className="text-sm text-slate-500 text-center py-4">No active tasks</p>
                   ) : (
                     <div className="space-y-2">
-                      {tasks.filter((t) => t.status !== 'completed').slice(0, 3).map((task) => (
-                        <TooltipProvider key={task.id}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div
-                                className="p-2 border rounded hover:bg-slate-50 hover:border-purple-300 cursor-pointer transition-all group relative"
-                                onClick={() => {
-                                  setSelectedTask(task);
-                                  setEditTaskDialogOpen(true);
-                                }}
-                              >
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <div className="font-medium text-sm">{task.title}</div>
-                                    <div className="flex items-center justify-between mt-1">
-                                      <div className="text-xs text-slate-500">
-                                        Due: {format(new Date(task.due_date), 'MMM dd, yyyy')}
+                      {tasks
+                        .filter((t) => t.status !== 'completed')
+                        .slice(0, 3)
+                        .map((task) => (
+                          <TooltipProvider key={task.id}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className="p-2 border rounded hover:bg-slate-50 hover:border-purple-300 cursor-pointer transition-all group relative"
+                                  onClick={() => {
+                                    setSelectedTask(task);
+                                    setEditTaskDialogOpen(true);
+                                  }}
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="font-medium text-sm">{task.title}</div>
+                                      <div className="flex items-center justify-between mt-1">
+                                        <div className="text-xs text-slate-500">
+                                          Due: {format(new Date(task.due_date), 'MMM dd, yyyy')}
+                                        </div>
+                                        <Badge className={`text-xs ${getTaskStatusBadge(task.status).className}`}>
+                                          {getTaskStatusBadge(task.status).label}
+                                        </Badge>
                                       </div>
-                                      <Badge className={`text-xs ${getTaskStatusBadge(task.status).className}`}>
-                                        {getTaskStatusBadge(task.status).label}
-                                      </Badge>
                                     </div>
+                                    <Edit2 className="h-3 w-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-2" />
                                   </div>
-                                  <Edit2 className="h-3 w-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ml-2" />
                                 </div>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="left">
-                              <p className="text-xs">Click to update status, priority, or due date</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ))}
+                              </TooltipTrigger>
+                              <TooltipContent side="left">
+                                <p className="text-xs">Click to update status, priority, or due date</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ))}
                     </div>
                   )}
                 </CardContent>
@@ -763,6 +792,7 @@ export default function CaseDetailPage() {
               </Card>
             </div>
 
+            {/* Case Timeline */}
             <Card>
               <CardContent className="pt-6">
                 <CaseTimeline caseId={caseId} caseCreatedAt={caseData.created_at} refreshKey={timelineKey} />
@@ -770,6 +800,7 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
+          {/* Parties Tab */}
           <TabsContent value="parties">
             <Card>
               <CardHeader>
@@ -786,7 +817,11 @@ export default function CaseDetailPage() {
                   <div className="text-center py-12">
                     <Users className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-600 mb-4">No parties added to this case</p>
-                    <Button variant="outline" className="gap-2" onClick={() => setPartyDialogOpen(true)}>
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => setPartyDialogOpen(true)}
+                    >
                       <Plus className="h-4 w-4" />
                       Add First Party
                     </Button>
@@ -794,11 +829,16 @@ export default function CaseDetailPage() {
                 ) : (
                   <div className="space-y-3">
                     {parties.map((party) => (
-                      <div key={party.id} className="flex items-start justify-between p-4 border rounded-lg">
+                      <div
+                        key={party.id}
+                        className="flex items-start justify-between p-4 border rounded-lg"
+                      >
                         <div className="flex-1">
                           <h4 className="font-medium">{party.name}</h4>
                           <div className="flex items-center gap-4 mt-2 text-sm text-slate-600">
-                            <span className="capitalize">Type: {party.party_type.replace('_', ' ')}</span>
+                            <span className="capitalize">
+                              Type: {party.party_type.replace('_', ' ')}
+                            </span>
                             <span className="capitalize">Role: {party.role}</span>
                           </div>
                         </div>
@@ -820,6 +860,7 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
+          {/* Documents Tab */}
           <TabsContent value="documents">
             <Card>
               <CardHeader>
@@ -836,7 +877,11 @@ export default function CaseDetailPage() {
                   <div className="text-center py-12">
                     <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-600 mb-4">No documents uploaded</p>
-                    <Button variant="outline" className="gap-2" onClick={() => setDocumentDialogOpen(true)}>
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => setDocumentDialogOpen(true)}
+                    >
                       <Upload className="h-4 w-4" />
                       Upload First Document
                     </Button>
@@ -854,9 +899,13 @@ export default function CaseDetailPage() {
                           </div>
                           <div className="flex-1">
                             <h4 className="font-medium">{doc.title}</h4>
-                            {doc.description && <p className="text-sm text-slate-600 mt-1">{doc.description}</p>}
+                            {doc.description && (
+                              <p className="text-sm text-slate-600 mt-1">{doc.description}</p>
+                            )}
                             <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-                              <span>Uploaded: {format(new Date(doc.uploaded_at), 'MMM dd, yyyy')}</span>
+                              <span>
+                                Uploaded: {format(new Date(doc.uploaded_at), 'MMM dd, yyyy')}
+                              </span>
                               {doc.file_type && <span>Type: {doc.file_type}</span>}
                             </div>
                           </div>
@@ -866,17 +915,12 @@ export default function CaseDetailPage() {
                             variant="outline"
                             size="sm"
                             onClick={async () => {
-                              const storagePath = doc.storage_path || doc.file_url;
-                              if (storagePath) {
-                                const { data, error } = await supabase.storage
+                              if (doc.file_path) {
+                                const { data } = supabase.storage
                                   .from('case-documents')
-                                  .createSignedUrl(storagePath, 60 * 5);
-                                if (error) {
-                                  toast.error('Failed to create secure download link');
-                                  return;
-                                }
-                                if (data?.signedUrl) {
-                                  window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+                                  .getPublicUrl(doc.file_path);
+                                if (data?.publicUrl) {
+                                  window.open(data.publicUrl, '_blank');
                                   toast.success('Opening document...');
                                 }
                               }
@@ -891,17 +935,12 @@ export default function CaseDetailPage() {
                             variant="outline"
                             size="sm"
                             onClick={async () => {
-                              const storagePath = doc.storage_path || doc.file_url;
-                              if (storagePath) {
-                                const { data, error } = await supabase.storage
+                              if (doc.file_path) {
+                                const { data } = supabase.storage
                                   .from('case-documents')
-                                  .createSignedUrl(storagePath, 60 * 5);
-                                if (error) {
-                                  toast.error('Failed to create secure print link');
-                                  return;
-                                }
-                                if (data?.signedUrl) {
-                                  const printWindow = window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+                                  .getPublicUrl(doc.file_path);
+                                if (data?.publicUrl) {
+                                  const printWindow = window.open(data.publicUrl, '_blank');
                                   if (printWindow) {
                                     printWindow.onload = () => {
                                       printWindow.print();
@@ -938,10 +977,13 @@ export default function CaseDetailPage() {
                             onClick={async () => {
                               if (confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
                                 try {
-                                  const storagePath = doc.storage_path || doc.file_url;
-                                  if (storagePath) {
-                                    await supabase.storage.from('case-documents').remove([storagePath]);
+                                  // Delete from storage
+                                  if (doc.file_path) {
+                                    await supabase.storage
+                                      .from('case-documents')
+                                      .remove([doc.file_path]);
                                   }
+                                  // Delete from database
                                   const { error } = await (supabase as any)
                                     .from('documents')
                                     .delete()
@@ -971,6 +1013,7 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
+          {/* Tasks Tab */}
           <TabsContent value="tasks">
             <Card>
               <CardHeader>
@@ -987,7 +1030,11 @@ export default function CaseDetailPage() {
                   <div className="text-center py-12">
                     <CheckSquare className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-600 mb-4">No tasks created</p>
-                    <Button variant="outline" className="gap-2" onClick={() => setTaskDialogOpen(true)}>
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => setTaskDialogOpen(true)}
+                    >
                       <Plus className="h-4 w-4" />
                       Create First Task
                     </Button>
@@ -1005,7 +1052,9 @@ export default function CaseDetailPage() {
                       >
                         <div className="flex-1">
                           <h4 className="font-medium">{task.title}</h4>
-                          {task.description && <p className="text-sm text-slate-600 mt-1">{task.description}</p>}
+                          {task.description && (
+                            <p className="text-sm text-slate-600 mt-1">{task.description}</p>
+                          )}
                           <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
                             <span>Due: {format(new Date(task.due_date), 'MMM dd, yyyy')}</span>
                           </div>
@@ -1021,6 +1070,7 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
+          {/* Events Tab */}
           <TabsContent value="events">
             <Card>
               <CardHeader>
@@ -1037,7 +1087,11 @@ export default function CaseDetailPage() {
                   <div className="text-center py-12">
                     <Calendar className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-600 mb-4">No events scheduled</p>
-                    <Button variant="outline" className="gap-2" onClick={() => setEventDialogOpen(true)}>
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => setEventDialogOpen(true)}
+                    >
                       <Plus className="h-4 w-4" />
                       Schedule First Event
                     </Button>
@@ -1058,7 +1112,9 @@ export default function CaseDetailPage() {
                         </div>
                         <div className="flex-1">
                           <h4 className="font-medium">{event.title}</h4>
-                          {event.description && <p className="text-sm text-slate-600 mt-1">{event.description}</p>}
+                          {event.description && (
+                            <p className="text-sm text-slate-600 mt-1">{event.description}</p>
+                          )}
                           <div className="flex items-center gap-4 mt-2 text-sm text-slate-600">
                             <span>{format(new Date(event.event_date), 'MMM dd, yyyy - h:mm a')}</span>
                             {event.location && <span>Location: {event.location}</span>}
@@ -1072,6 +1128,7 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
+          {/* Land Parcels Tab */}
           <TabsContent value="land">
             <Card>
               <CardHeader>
@@ -1088,7 +1145,11 @@ export default function CaseDetailPage() {
                   <div className="text-center py-12">
                     <MapPin className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-600 mb-4">No land parcels linked</p>
-                    <Button variant="outline" className="gap-2" onClick={() => setLandParcelDialogOpen(true)}>
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => setLandParcelDialogOpen(true)}
+                    >
                       <Plus className="h-4 w-4" />
                       Link First Parcel
                     </Button>
@@ -1109,7 +1170,9 @@ export default function CaseDetailPage() {
                         </div>
                         <div className="flex-1">
                           <h4 className="font-medium">Parcel {parcel.parcel_number}</h4>
-                          {parcel.location && <p className="text-sm text-slate-600 mt-1">{parcel.location}</p>}
+                          {parcel.location && (
+                            <p className="text-sm text-slate-600 mt-1">{parcel.location}</p>
+                          )}
                           {parcel.notes && <p className="text-sm text-slate-500 mt-1">{parcel.notes}</p>}
                         </div>
                         <Button
@@ -1131,6 +1194,7 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
+          {/* Alerts Tab */}
           <TabsContent value="alerts">
             <Card>
               <CardHeader>
@@ -1156,27 +1220,20 @@ export default function CaseDetailPage() {
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
-                                <Badge
-                                  className={
-                                    alert.priority === 'urgent'
-                                      ? 'bg-red-100 text-red-800 border-red-300 border'
-                                      : alert.priority === 'high'
-                                        ? 'bg-orange-100 text-orange-800 border-orange-300 border'
-                                        : 'bg-yellow-100 text-yellow-800 border-yellow-300 border'
-                                  }
-                                >
+                                <Badge className={
+                                  alert.priority === 'urgent' ? 'bg-red-100 text-red-800 border-red-300 border' :
+                                  alert.priority === 'high' ? 'bg-orange-100 text-orange-800 border-orange-300 border' :
+                                  'bg-yellow-100 text-yellow-800 border-yellow-300 border'
+                                }>
                                   {alert.priority}
                                 </Badge>
                                 <Badge variant="outline" className="capitalize">
                                   {alert.recipient_role.replace('_', ' ')}
                                 </Badge>
-                                <Badge
-                                  className={
-                                    alert.response_status === 'responded'
-                                      ? 'bg-green-100 text-green-800 border-green-300 border'
-                                      : 'bg-yellow-100 text-yellow-800 border-yellow-300 border'
-                                  }
-                                >
+                                <Badge className={
+                                  alert.response_status === 'responded' ? 'bg-green-100 text-green-800 border-green-300 border' :
+                                  'bg-yellow-100 text-yellow-800 border-yellow-300 border'
+                                }>
                                   {alert.response_status === 'responded' ? 'Responded' : 'Pending'}
                                 </Badge>
                               </div>
@@ -1241,7 +1298,11 @@ export default function CaseDetailPage() {
                                     </div>
                                   </div>
                                 ) : (
-                                  <Button onClick={() => setRespondingToAlert(alert.id)} variant="outline" className="gap-2">
+                                  <Button
+                                    onClick={() => setRespondingToAlert(alert.id)}
+                                    variant="outline"
+                                    className="gap-2"
+                                  >
                                     <Send className="h-4 w-4" />
                                     Respond to Alert
                                   </Button>
@@ -1258,7 +1319,9 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
+          {/* Costs Tab */}
           <TabsContent value="costs" className="space-y-4">
+            {/* Prominent Add Cost Section */}
             <Card className="border-2 border-dashed border-[#8B2332]/30 bg-[#8B2332]/5">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1283,6 +1346,7 @@ export default function CaseDetailPage() {
             <CostList caseId={caseId} onRefresh={loadCaseData} />
           </TabsContent>
 
+          {/* Court Order Tab */}
           <TabsContent value="court-order" className="space-y-4">
             <Card>
               <CardHeader>
@@ -1292,7 +1356,9 @@ export default function CaseDetailPage() {
                       <Gavel className="h-5 w-5" />
                       Court Order Registration
                     </CardTitle>
-                    <CardDescription>Record court orders, judgments, and final decisions</CardDescription>
+                    <CardDescription>
+                      Record court orders, judgments, and final decisions
+                    </CardDescription>
                   </div>
                   <AddCourtOrderDialog
                     caseId={caseId}
@@ -1306,7 +1372,9 @@ export default function CaseDetailPage() {
                   <div className="text-center py-12">
                     <Gavel className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-slate-900 mb-2">No Court Orders Registered</h3>
-                    <p className="text-slate-600 mb-6">Register court orders when the case reaches judgment stage</p>
+                    <p className="text-slate-600 mb-6">
+                      Register court orders when the case reaches judgment stage
+                    </p>
                     <div className="max-w-md mx-auto p-4 bg-amber-50 border border-amber-200 rounded-lg text-left">
                       <h4 className="font-semibold text-amber-900 mb-2">Court Order Details Include:</h4>
                       <ul className="text-sm text-amber-800 space-y-1">
@@ -1331,7 +1399,9 @@ export default function CaseDetailPage() {
                             </div>
                             <div>
                               <h4 className="font-semibold text-slate-900">{order.court_reference}</h4>
-                              <p className="text-sm text-slate-600">{format(new Date(order.order_date), 'MMMM dd, yyyy')}</p>
+                              <p className="text-sm text-slate-600">
+                                {format(new Date(order.order_date), 'MMMM dd, yyyy')}
+                              </p>
                             </div>
                           </div>
                           <Badge className="bg-amber-100 text-amber-800 border-amber-200 capitalize">
@@ -1367,15 +1437,11 @@ export default function CaseDetailPage() {
 
                         {order.outcome && (
                           <div className="pt-3 border-t">
-                            <Badge
-                              className={
-                                order.outcome === 'in_favor_dlpp'
-                                  ? 'bg-green-100 text-green-800 border-green-200'
-                                  : order.outcome === 'against_dlpp'
-                                    ? 'bg-red-100 text-red-800 border-red-200'
-                                    : 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                              }
-                            >
+                            <Badge className={
+                              order.outcome === 'in_favor_dlpp' ? 'bg-green-100 text-green-800 border-green-200' :
+                              order.outcome === 'against_dlpp' ? 'bg-red-100 text-red-800 border-red-200' :
+                              'bg-yellow-100 text-yellow-800 border-yellow-200'
+                            }>
                               Outcome: {order.outcome.replace(/_/g, ' ')}
                             </Badge>
                           </div>
@@ -1388,6 +1454,7 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
+          {/* Closure Tab */}
           <TabsContent value="closure" className="space-y-4">
             <Card>
               <CardHeader>
@@ -1397,7 +1464,9 @@ export default function CaseDetailPage() {
                       <Archive className="h-5 w-5" />
                       Case Closure
                     </CardTitle>
-                    <CardDescription>Finalize and archive the case</CardDescription>
+                    <CardDescription>
+                      Finalize and archive the case
+                    </CardDescription>
                   </div>
                   {caseData.status !== 'closed' && (
                     <CaseClosureDialog
@@ -1436,7 +1505,9 @@ export default function CaseDetailPage() {
                   <div className="text-center py-12">
                     <Archive className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-slate-900 mb-2">Case Not Yet Closed</h3>
-                    <p className="text-slate-600 mb-6">Complete all required steps before closing the case</p>
+                    <p className="text-slate-600 mb-6">
+                      Complete all required steps before closing the case
+                    </p>
                     <div className="max-w-md mx-auto p-4 bg-slate-50 border border-slate-200 rounded-lg text-left">
                       <h4 className="font-semibold text-slate-900 mb-2">Before Closing:</h4>
                       <ul className="text-sm text-slate-700 space-y-1">
@@ -1527,7 +1598,9 @@ export default function CaseDetailPage() {
                           <div className="flex items-start justify-between">
                             <div>
                               <h4 className="font-medium">{entry.action}</h4>
-                              {entry.description && <p className="text-sm text-slate-600 mt-1">{entry.description}</p>}
+                              {entry.description && (
+                                <p className="text-sm text-slate-600 mt-1">{entry.description}</p>
+                              )}
                             </div>
                             <time className="text-xs text-slate-500 whitespace-nowrap ml-4">
                               {format(new Date(entry.created_at), 'MMM dd, yyyy h:mm a')}
@@ -1543,6 +1616,7 @@ export default function CaseDetailPage() {
           </TabsContent>
         </Tabs>
 
+        {/* Hidden controlled dialogs */}
         <AddPartyDialog
           caseId={caseId}
           onSuccess={loadCaseData}
@@ -1574,6 +1648,7 @@ export default function CaseDetailPage() {
           onOpenChange={setLandParcelDialogOpen}
         />
 
+        {/* Edit dialogs */}
         {selectedParty && (
           <EditPartyDialog
             party={selectedParty}
@@ -1615,6 +1690,7 @@ export default function CaseDetailPage() {
           />
         )}
 
+        {/* Stage change confirmation */}
         <AlertDialog
           open={pendingStage !== null}
           onOpenChange={(open) => {
@@ -1626,7 +1702,7 @@ export default function CaseDetailPage() {
               <AlertDialogTitle>Move case to “{pendingStage?.label}”?</AlertDialogTitle>
               <AlertDialogDescription>
                 {caseData
-                  ? `This will change the workflow stage from “${stageLabel(canonicalStage(caseData))}” to “${pendingStage?.label}”. A record of this change is added to the case timeline.`
+                  ? `This will change the workflow stage from “${stageLabel(caseData.status)}” to “${pendingStage?.label}”. A record of this change is added to the case timeline.`
                   : ''}
               </AlertDialogDescription>
             </AlertDialogHeader>

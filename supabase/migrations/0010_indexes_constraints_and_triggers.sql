@@ -112,7 +112,7 @@ create unique index if not exists priority_levels_code_key on public.priority_le
 
 create table if not exists public.case_closures (
   id uuid primary key default gen_random_uuid(),
-  case_id uuid not null references public.cases(id) on delete restrict,
+  case_id uuid not null references public.cases(id) on delete cascade,
   closure_type text,
   closure_date date,
   outcome_summary text,

@@ -22,8 +22,7 @@ interface Document {
   title: string;
   description?: string | null;
   file_type?: string | null;
-  storage_path?: string | null;
-  file_url?: string | null;
+  file_path?: string | null;
 }
 
 interface EditDocumentDialogProps {
@@ -85,11 +84,10 @@ export function EditDocumentDialog({ document, onSuccess, open, onOpenChange }: 
     setLoading(true);
     try {
       // Delete file from storage if exists
-      const storagePath = document.storage_path || document.file_url;
-      if (storagePath) {
+      if (document.file_path) {
         const { error: storageError } = await supabase.storage
           .from('case-documents')
-          .remove([storagePath]);
+          .remove([document.file_path]);
 
         if (storageError) {
           console.warn('Storage delete warning:', storageError);
@@ -117,8 +115,7 @@ export function EditDocumentDialog({ document, onSuccess, open, onOpenChange }: 
   };
 
   const handleDownload = async () => {
-    const storagePath = document.storage_path || document.file_url;
-    if (!storagePath) {
+    if (!document.file_path) {
       toast.error('No file attached to this document');
       return;
     }
@@ -126,7 +123,7 @@ export function EditDocumentDialog({ document, onSuccess, open, onOpenChange }: 
     try {
       const { data, error } = await supabase.storage
         .from('case-documents')
-        .download(storagePath);
+        .download(document.file_path);
 
       if (error) throw error;
 
@@ -193,7 +190,7 @@ export function EditDocumentDialog({ document, onSuccess, open, onOpenChange }: 
             />
           </div>
 
-          {(document.storage_path || document.file_url) && (
+          {document.file_path && (
             <div className="pt-2">
               <Button type="button" variant="outline" onClick={handleDownload} className="w-full">
                 Download File
