@@ -25,6 +25,7 @@ $$;
 
 select public.add_column_if_missing('action_officers', 'title', 'text');
 select public.add_column_if_missing('action_officers', 'department', 'text');
+select public.add_column_if_missing('action_officers', 'division', 'text');
 select public.add_column_if_missing('action_officers', 'email', 'text');
 select public.add_column_if_missing('action_officers', 'phone', 'text');
 select public.add_column_if_missing('action_officers', 'employee_id', 'text');
