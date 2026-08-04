@@ -21,7 +21,6 @@ import {
   UserCheck,
   Search,
   Filter,
-  User,
   Calendar,
   FileText,
   ArrowRight,
@@ -193,6 +192,11 @@ export default function CaseAssignmentsPage() {
     }
   };
 
+  const selectOfficer = (officer: Officer) => {
+    setSelectedOfficer(officer.id);
+    setOfficerPickerOpen(false);
+  };
+
   const handleAssignCase = async () => {
     if (!selectedCase || !selectedOfficer) {
       toast.error('Please select an officer to assign');
@@ -305,7 +309,7 @@ export default function CaseAssignmentsPage() {
     }
   };
 
-  const filteredCases = pendingCases.filter(c => {
+  const filteredCases = pendingCases.filter((c) => {
     const matchesSearch =
       c.case_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -326,8 +330,8 @@ export default function CaseAssignmentsPage() {
     return variants[priority] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
-  const highPriorityCount = pendingCases.filter(c => c.priority === 'urgent' || c.priority === 'high').length;
-  const olderThan3Days = pendingCases.filter(c => {
+  const highPriorityCount = pendingCases.filter((c) => c.priority === 'urgent' || c.priority === 'high').length;
+  const olderThan3Days = pendingCases.filter((c) => {
     const daysSinceCreated = Math.floor((Date.now() - new Date(c.created_at).getTime()) / (1000 * 60 * 60 * 24));
     return daysSinceCreated > 3;
   }).length;
@@ -439,12 +443,8 @@ export default function CaseAssignmentsPage() {
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <span className="font-mono text-xs text-slate-600">
-                            {caseItem.case_number}
-                          </span>
-                          <Badge className={getPriorityBadge(caseItem.priority)}>
-                            {caseItem.priority}
-                          </Badge>
+                          <span className="font-mono text-xs text-slate-600">{caseItem.case_number}</span>
+                          <Badge className={getPriorityBadge(caseItem.priority)}>{caseItem.priority}</Badge>
                           <Badge variant="outline" className="capitalize text-xs">
                             {caseItem.case_type.replace(/_/g, ' ')}
                           </Badge>
@@ -462,9 +462,7 @@ export default function CaseAssignmentsPage() {
                             <Calendar className="h-3 w-3" />
                             Registered: {format(new Date(caseItem.created_at), 'MMM dd, yyyy')}
                           </span>
-                          {caseItem.region && (
-                            <span>Region: {caseItem.region}</span>
-                          )}
+                          {caseItem.region && <span>Region: {caseItem.region}</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
@@ -477,18 +475,21 @@ export default function CaseAssignmentsPage() {
                           <FileText className="h-4 w-4 mr-1" />
                           View
                         </Button>
-                        <Dialog open={dialogOpen && selectedCase?.id === caseItem.id} onOpenChange={(open) => {
-                          setDialogOpen(open);
-                          if (!open) {
-                            setSelectedCase(null);
-                            setSelectedOfficer('');
-                            setAssignmentNotes('');
-                            setOfficerPickerOpen(false);
-                            setOfficerDialogOpen(false);
-                            setEditingOfficer(null);
-                            setOfficerForm(emptyOfficerForm);
-                          }
-                        }}>
+                        <Dialog
+                          open={dialogOpen && selectedCase?.id === caseItem.id}
+                          onOpenChange={(open) => {
+                            setDialogOpen(open);
+                            if (!open) {
+                              setSelectedCase(null);
+                              setSelectedOfficer('');
+                              setAssignmentNotes('');
+                              setOfficerPickerOpen(false);
+                              setOfficerDialogOpen(false);
+                              setEditingOfficer(null);
+                              setOfficerForm(emptyOfficerForm);
+                            }
+                          }}
+                        >
                           <DialogTrigger asChild>
                             <Button
                               size="sm"
@@ -541,12 +542,15 @@ export default function CaseAssignmentsPage() {
                                             {officers.map((officer) => (
                                               <CommandItem
                                                 key={officer.id}
-                                                value={`${officer.name} ${officer.title || ''} ${officer.department || officer.division || ''} ${officer.email || ''}`}
-                                                onSelect={() => {
-                                                  setSelectedOfficer(officer.id);
-                                                  setOfficerPickerOpen(false);
+                                                value={officer.id}
+                                                keywords={[officer.name, officer.title || '', officer.department || officer.division || '', officer.email || '']}
+                                                onSelect={() => selectOfficer(officer)}
+                                                onMouseDown={(event) => {
+                                                  event.preventDefault();
+                                                  selectOfficer(officer);
                                                 }}
-                                                className="gap-2"
+                                                onClick={() => selectOfficer(officer)}
+                                                className="gap-2 cursor-pointer"
                                               >
                                                 <Check className={`h-4 w-4 ${selectedOfficer === officer.id ? 'opacity-100' : 'opacity-0'}`} />
                                                 <div className="min-w-0 flex-1">
@@ -563,11 +567,25 @@ export default function CaseAssignmentsPage() {
                                     </PopoverContent>
                                   </Popover>
                                   {selectedOfficerRecord && (
-                                    <Button type="button" variant="outline" size="icon" className="h-9 w-9" onClick={() => openOfficerForm(selectedOfficerRecord)} title="Edit selected officer">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-9 w-9"
+                                      onClick={() => openOfficerForm(selectedOfficerRecord)}
+                                      title="Edit selected officer"
+                                    >
                                       <Pencil className="h-4 w-4" />
                                     </Button>
                                   )}
-                                  <Button type="button" variant="outline" size="icon" className="h-9 w-9" onClick={() => openOfficerForm()} title="Add new internal lawyer">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-9 w-9"
+                                    onClick={() => openOfficerForm()}
+                                    title="Add new internal lawyer"
+                                  >
                                     <Plus className="h-4 w-4" />
                                   </Button>
                                 </div>
@@ -617,7 +635,9 @@ export default function CaseAssignmentsPage() {
 
             {filteredCases.length > 0 && (
               <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 text-xs text-slate-500 flex items-center justify-between">
-                <span>Showing {filteredCases.length} of {pendingCases.length} pending cases</span>
+                <span>
+                  Showing {filteredCases.length} of {pendingCases.length} pending cases
+                </span>
                 <span>Click Assign to allocate to an officer</span>
               </div>
             )}
@@ -636,27 +656,52 @@ export default function CaseAssignmentsPage() {
           <div className="grid gap-4 py-2 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
               <Label>Full name *</Label>
-              <Input value={officerForm.name} onChange={(event) => setOfficerForm({ ...officerForm, name: event.target.value })} placeholder="e.g. John Kila" />
+              <Input
+                value={officerForm.name}
+                onChange={(event) => setOfficerForm({ ...officerForm, name: event.target.value })}
+                placeholder="e.g. John Kila"
+              />
             </div>
             <div className="space-y-2">
               <Label>Position / title *</Label>
-              <Input value={officerForm.title} onChange={(event) => setOfficerForm({ ...officerForm, title: event.target.value })} placeholder="Senior Legal Officer" />
+              <Input
+                value={officerForm.title}
+                onChange={(event) => setOfficerForm({ ...officerForm, title: event.target.value })}
+                placeholder="Senior Legal Officer"
+              />
             </div>
             <div className="space-y-2">
               <Label>Division / section *</Label>
-              <Input value={officerForm.department} onChange={(event) => setOfficerForm({ ...officerForm, department: event.target.value })} placeholder="Legal Services Division" />
+              <Input
+                value={officerForm.department}
+                onChange={(event) => setOfficerForm({ ...officerForm, department: event.target.value })}
+                placeholder="Legal Services Division"
+              />
             </div>
             <div className="space-y-2">
               <Label>Email address</Label>
-              <Input type="email" value={officerForm.email} onChange={(event) => setOfficerForm({ ...officerForm, email: event.target.value })} placeholder="name@example.gov.pg" />
+              <Input
+                type="email"
+                value={officerForm.email}
+                onChange={(event) => setOfficerForm({ ...officerForm, email: event.target.value })}
+                placeholder="name@example.gov.pg"
+              />
             </div>
             <div className="space-y-2">
               <Label>Phone number</Label>
-              <Input value={officerForm.phone} onChange={(event) => setOfficerForm({ ...officerForm, phone: event.target.value })} placeholder="Phone number" />
+              <Input
+                value={officerForm.phone}
+                onChange={(event) => setOfficerForm({ ...officerForm, phone: event.target.value })}
+                placeholder="Phone number"
+              />
             </div>
             <div className="space-y-2">
               <Label>Employee ID</Label>
-              <Input value={officerForm.employee_id} onChange={(event) => setOfficerForm({ ...officerForm, employee_id: event.target.value })} placeholder="Employee/account number" />
+              <Input
+                value={officerForm.employee_id}
+                onChange={(event) => setOfficerForm({ ...officerForm, employee_id: event.target.value })}
+                placeholder="Employee/account number"
+              />
             </div>
             <div className="space-y-2">
               <Label>Employment / account status</Label>
@@ -672,11 +717,18 @@ export default function CaseAssignmentsPage() {
             </div>
             <div className="space-y-2 md:col-span-2">
               <Label>Notes</Label>
-              <Textarea value={officerForm.notes} onChange={(event) => setOfficerForm({ ...officerForm, notes: event.target.value })} rows={3} placeholder="Optional remarks" />
+              <Textarea
+                value={officerForm.notes}
+                onChange={(event) => setOfficerForm({ ...officerForm, notes: event.target.value })}
+                rows={3}
+                placeholder="Optional remarks"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOfficerDialogOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setOfficerDialogOpen(false)}>
+              Cancel
+            </Button>
             <Button type="button" onClick={saveOfficer} disabled={savingOfficer} className="bg-emerald-600 hover:bg-emerald-700">
               {savingOfficer ? 'Saving...' : editingOfficer ? 'Save Changes' : 'Add and Select'}
             </Button>
