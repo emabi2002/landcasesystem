@@ -72,7 +72,7 @@ function LoginForm() {
               className="h-20 w-auto"
             />
           </div>
-          <CardTitle className="text-2xl text-center font-bold" style={{ color: '#4A4284' }}>Legal Case Management System</CardTitle>
+          <CardTitle className="text-2xl text-center font-bold" style={{ color: '#4A4284' }}>Case Management System</CardTitle>
           <CardDescription className="text-center text-base">
             Department of Lands & Physical Planning
           </CardDescription>
