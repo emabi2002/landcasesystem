@@ -52,7 +52,7 @@ select public.add_column_if_missing('case_assignments', 'action_officer_id', 'uu
 create index if not exists action_officers_active_idx on public.action_officers (is_active, employment_status);
 create index if not exists action_officers_name_lower_idx on public.action_officers (lower(name));
 
-do $
+do $$
 begin
   begin
     create unique index if not exists action_officers_email_unique_idx
@@ -87,7 +87,7 @@ begin
       where profile_id is not null;
   end;
 end;
-$;
+$$;
 
 create index if not exists cases_assigned_action_officer_idx on public.cases (assigned_action_officer_id);
 create index if not exists case_assignments_action_officer_idx on public.case_assignments (action_officer_id);
