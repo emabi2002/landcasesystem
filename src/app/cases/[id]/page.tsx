@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 import { supabase } from '@/lib/supabase';
+import { logAudit } from '@/lib/permissions';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,7 +48,6 @@ import { CaseClosureDialog } from '@/components/forms/CaseClosureDialog';
 import {
   ArrowLeft,
   ArrowRight,
-  Edit,
   FileText,
   Users,
   MapPin,
@@ -57,14 +57,14 @@ import {
   Upload,
   Plus,
   Edit2,
-  MousePointerClick,
-  Link as LinkIcon,
   Bell,
   Send,
   DollarSign,
   Gavel,
   Archive,
   Scale,
+  UserCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import { WorkflowStepper, getWorkflowStepsFromStatus } from '@/components/dashboard/WorkflowStepper';
 import { CaseTimeline } from '@/components/cases/CaseTimeline';
@@ -83,6 +83,14 @@ interface CaseData {
   priority: string;
   region?: string | null;
   created_at: string;
+  assigned_officer_id?: string | null;
+  created_by?: string | null;
+  updated_by?: string | null;
+  updated_at?: string | null;
+  closure_type?: string | null;
+  closure_date?: string | null;
+  closure_notes?: string | null;
+  workflow_state?: string | null;
 }
 
 interface Party {
@@ -141,6 +149,18 @@ interface HistoryItem {
   action: string;
   description?: string | null;
   created_at: string;
+  activity_type?: string | null;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  old_value?: unknown;
+  new_value?: unknown;
+  old_values?: Record<string, unknown> | null;
+  new_values?: Record<string, unknown> | null;
+  changed_fields?: string[] | null;
+  performed_by?: string | null;
+  created_by?: string | null;
+  source_module?: string | null;
+  reason?: string | null;
 }
 
 interface Alert {
@@ -171,6 +191,61 @@ interface CourtOrder {
   outcome?: string | null;
   uploaded_by: string;
   created_at: string;
+}
+
+interface AssignmentItem {
+  id: string;
+  case_id: string;
+  assigned_to?: string | null;
+  assigned_officer_id?: string | null;
+  assigned_by?: string | null;
+  assigned_by_user_id?: string | null;
+  previous_officer_id?: string | null;
+  assignment_type?: string | null;
+  assignment_reason?: string | null;
+  assigned_at: string;
+  ended_at?: string | null;
+  completed_at?: string | null;
+  is_current?: boolean | null;
+  status?: string | null;
+  remarks?: string | null;
+  created_by?: string | null;
+  updated_by?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+interface CaseAuditLog {
+  id: string;
+  user_id?: string | null;
+  user_full_name?: string | null;
+  action: string;
+  table_name?: string | null;
+  record_type?: string | null;
+  record_id?: string | null;
+  changed_fields?: string[] | null;
+  old_data?: Record<string, unknown> | null;
+  new_data?: Record<string, unknown> | null;
+  reason?: string | null;
+  source_module?: string | null;
+  created_at: string;
+  details?: Record<string, unknown> | null;
+}
+
+interface ProfileSummary {
+  id: string;
+  full_name?: string | null;
+  email?: string | null;
+}
+
+function formatValue(value: unknown) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 /* ---------- Workflow stage helpers ---------- */
@@ -212,10 +287,14 @@ export default function CaseDetailPage() {
   const [caseHistory, setCaseHistory] = useState<HistoryItem[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [courtOrders, setCourtOrders] = useState<CourtOrder[]>([]);
+  const [caseAssignments, setCaseAssignments] = useState<AssignmentItem[]>([]);
+  const [caseAuditLogs, setCaseAuditLogs] = useState<CaseAuditLog[]>([]);
+  const [profileMap, setProfileMap] = useState<Record<string, ProfileSummary>>({});
   const [respondingToAlert, setRespondingToAlert] = useState<string | null>(null);
   const [alertResponse, setAlertResponse] = useState('');
   const [updatingStage, setUpdatingStage] = useState(false);
   const [pendingStage, setPendingStage] = useState<{ value: string; label: string } | null>(null);
+  const [stageChangeReason, setStageChangeReason] = useState('');
   const [timelineKey, setTimelineKey] = useState(0);
 
   // Dialog states for programmatic control
@@ -246,7 +325,6 @@ export default function CaseDetailPage() {
 
   const loadCaseData = async () => {
     try {
-      // Case
       const { data: caseDetail, error: caseError } = await supabase
         .from('cases')
         .select('*')
@@ -256,7 +334,6 @@ export default function CaseDetailPage() {
       if (caseError) throw caseError;
       setCaseData(caseDetail as CaseData);
 
-      // Related
       const [
         { data: partiesData },
         { data: documentsData },
@@ -266,6 +343,9 @@ export default function CaseDetailPage() {
         { data: historyData },
         { data: alertsData },
         { data: courtOrdersData },
+        { data: assignmentsData },
+        { data: auditData, error: auditError },
+        { data: profilesData },
       ] = await Promise.all([
         supabase.from('parties').select('*').eq('case_id', caseId),
         supabase.from('documents').select('*').eq('case_id', caseId).order('uploaded_at', { ascending: false }),
@@ -275,6 +355,9 @@ export default function CaseDetailPage() {
         supabase.from('case_history').select('*').eq('case_id', caseId).order('created_at', { ascending: false }),
         (supabase as any).from('communications').select('*').eq('case_id', caseId).eq('communication_type', 'alert').order('created_at', { ascending: false }),
         (supabase as any).from('court_orders').select('*').eq('case_id', caseId).order('order_date', { ascending: false }),
+        (supabase as any).from('case_assignments').select('*').eq('case_id', caseId).order('assigned_at', { ascending: false }),
+        (supabase as any).from('audit_logs').select('*').eq('case_id', caseId).order('created_at', { ascending: false }).limit(200),
+        (supabase as any).from('profiles').select('id, full_name, email'),
       ]);
 
       setParties((partiesData as Party[]) ?? []);
@@ -285,6 +368,14 @@ export default function CaseDetailPage() {
       setCaseHistory((historyData as HistoryItem[]) ?? []);
       setAlerts((alertsData as Alert[]) ?? []);
       setCourtOrders((courtOrdersData as CourtOrder[]) ?? []);
+      setCaseAssignments((assignmentsData as AssignmentItem[]) ?? []);
+      setCaseAuditLogs(auditError ? [] : ((auditData as CaseAuditLog[]) ?? []));
+      setProfileMap(
+        ((profilesData as ProfileSummary[]) ?? []).reduce<Record<string, ProfileSummary>>((acc, profile) => {
+          acc[profile.id] = profile;
+          return acc;
+        }, {})
+      );
     } catch (error) {
       console.error('Error loading case data:', error);
     } finally {
@@ -315,46 +406,78 @@ export default function CaseDetailPage() {
     return variants[status] || { className: 'bg-gray-100 text-gray-800', label: status };
   };
 
-  // Core write: update the case status and record an audit-trail entry (also shown on the Timeline).
-  const persistStageChange = async (newStatus: string, description: string) => {
+  const profileName = (id?: string | null) => {
+    if (!id) return '—';
+    const profile = profileMap[id];
+    return profile?.full_name || profile?.email || id.slice(0, 8);
+  };
+
+  const currentAssignment = caseAssignments.find((assignment) => assignment.is_current || assignment.status === 'active');
+  const isClosedOrSettled = caseData?.status === 'closed' || caseData?.status === 'settled';
+
+  const persistStageChange = async (newStatus: string, description: string, reason: string) => {
     const { data: { user } } = await supabase.auth.getUser();
 
     const { error } = await (supabase as any)
       .from('cases')
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .update({
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+        updated_by: user?.id ?? null,
+        last_change_reason: reason,
+      })
       .eq('id', caseId);
     if (error) throw error;
 
-    // Best-effort audit trail entry (picked up by the Case Timeline as a status change)
     try {
       await (supabase as any).from('case_history').insert({
         case_id: caseId,
         action: 'Stage Updated',
         description,
         performed_by: user?.id ?? null,
+        reason,
+        activity_type: 'stage_changed',
+        source_module: 'case_details',
+        old_value: { status: caseData?.status ?? null },
+        new_value: { status: newStatus },
+        changed_fields: ['status'],
       });
     } catch {
       // history table is optional; ignore failures
     }
+
+    await logAudit('update', 'cases', caseId, 'case_stage', {
+      reason,
+      previous_status: caseData?.status ?? null,
+      new_status: newStatus,
+    });
   };
 
-  // Open the confirmation dialog for a manual stage change.
   const requestStageChange = (newStatus: string) => {
     if (!caseData || !newStatus || canonicalStage(caseData.status) === newStatus) return;
     setPendingStage({ value: newStatus, label: stageLabel(newStatus) });
+    setStageChangeReason('');
   };
 
-  // Runs after the user confirms in the dialog.
   const confirmStageChange = async () => {
     if (!caseData || !pendingStage) return;
+    if (stageChangeReason.trim().length < 5) {
+      toast.error('Please provide a reason for changing the case stage.');
+      return;
+    }
     const target = pendingStage;
     setPendingStage(null);
     setUpdatingStage(true);
     try {
-      await persistStageChange(target.value, `Case stage changed to "${target.label}"`);
+      await persistStageChange(
+        target.value,
+        `Case stage changed to "${target.label}". Reason: ${stageChangeReason.trim()}`,
+        stageChangeReason.trim()
+      );
       toast.success(`Case moved to ${target.label}`);
       await loadCaseData();
       setTimelineKey((k) => k + 1);
+      setStageChangeReason('');
     } catch (error) {
       console.error('Error updating stage:', error);
       toast.error('Failed to update case stage');
@@ -363,21 +486,19 @@ export default function CaseDetailPage() {
     }
   };
 
-  // Auto-advance the case when a key milestone happens. Only ever moves the case forward.
   const maybeAutoAdvance = async (targetStatus: string, reason: string) => {
     if (!caseData) return;
     const curIdx = WORKFLOW_STAGES.findIndex((s) => s.value === canonicalStage(caseData.status));
     const targetIdx = WORKFLOW_STAGES.findIndex((s) => s.value === targetStatus);
-    if (targetIdx < 0 || targetIdx <= curIdx) return; // never move backward
+    if (targetIdx < 0 || targetIdx <= curIdx) return;
     try {
-      await persistStageChange(targetStatus, `Auto-advanced to "${stageLabel(targetStatus)}" (${reason})`);
+      await persistStageChange(targetStatus, `Auto-advanced to "${stageLabel(targetStatus)}" (${reason})`, reason);
       toast.info(`Stage auto-advanced to ${stageLabel(targetStatus)}`);
     } catch (error) {
       console.error('Auto-advance failed:', error);
     }
   };
 
-  // Registering a court order moves the case to the Judgment stage.
   const handleCourtOrderRegistered = async () => {
     await maybeAutoAdvance('judgment', 'court order registered');
     await loadCaseData();
@@ -446,12 +567,10 @@ export default function CaseDetailPage() {
     currentStageIdx >= 0 && currentStageIdx < WORKFLOW_STAGES.length - 1
       ? WORKFLOW_STAGES[currentStageIdx + 1]
       : null;
-  const isClosedOrSettled = caseData.status === 'closed' || caseData.status === 'settled';
 
   return (
     <AppLayout>
       <div className="p-6 lg:p-8 space-y-6">
-        {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <Link href="/cases">
@@ -481,7 +600,6 @@ export default function CaseDetailPage() {
           </div>
         </div>
 
-        {/* Case Info Cards */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="p-4">
@@ -511,7 +629,6 @@ export default function CaseDetailPage() {
           </Card>
         </div>
 
-        {/* Workflow Progress Stepper */}
         <Card data-tour="case-workflow" className="border-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
@@ -565,7 +682,6 @@ export default function CaseDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Tabs */}
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList data-tour="case-tabs" className="flex flex-wrap gap-1 h-auto p-1">
             <TabsTrigger value="overview" className="text-xs px-3">Overview</TabsTrigger>
@@ -574,6 +690,7 @@ export default function CaseDetailPage() {
             <TabsTrigger value="tasks" className="text-xs px-3">Tasks ({tasks.length})</TabsTrigger>
             <TabsTrigger value="events" className="text-xs px-3">Events ({events.length})</TabsTrigger>
             <TabsTrigger value="land" className="text-xs px-3">Land ({landParcels.length})</TabsTrigger>
+            <TabsTrigger value="assignments" className="text-xs px-3">Assignments ({caseAssignments.length})</TabsTrigger>
             <TabsTrigger value="costs" className="text-xs px-3 flex items-center gap-1">
               <DollarSign className="h-3 w-3" />
               Costs
@@ -595,9 +712,9 @@ export default function CaseDetailPage() {
             <TabsTrigger value="section-160" className="text-xs px-3">Section 160(2)</TabsTrigger>
             <TabsTrigger value="search-warrants" className="text-xs px-3">Search Warrants</TabsTrigger>
             <TabsTrigger value="history" className="text-xs px-3">History</TabsTrigger>
+            <TabsTrigger value="audit-trail" className="text-xs px-3">Audit Trail</TabsTrigger>
           </TabsList>
 
-          {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <Card>
@@ -792,7 +909,6 @@ export default function CaseDetailPage() {
               </Card>
             </div>
 
-            {/* Case Timeline */}
             <Card>
               <CardContent className="pt-6">
                 <CaseTimeline caseId={caseId} caseCreatedAt={caseData.created_at} refreshKey={timelineKey} />
@@ -800,7 +916,6 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
-          {/* Parties Tab */}
           <TabsContent value="parties">
             <Card>
               <CardHeader>
@@ -817,11 +932,7 @@ export default function CaseDetailPage() {
                   <div className="text-center py-12">
                     <Users className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-600 mb-4">No parties added to this case</p>
-                    <Button
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => setPartyDialogOpen(true)}
-                    >
+                    <Button variant="outline" className="gap-2" onClick={() => setPartyDialogOpen(true)}>
                       <Plus className="h-4 w-4" />
                       Add First Party
                     </Button>
@@ -829,16 +940,11 @@ export default function CaseDetailPage() {
                 ) : (
                   <div className="space-y-3">
                     {parties.map((party) => (
-                      <div
-                        key={party.id}
-                        className="flex items-start justify-between p-4 border rounded-lg"
-                      >
+                      <div key={party.id} className="flex items-start justify-between p-4 border rounded-lg">
                         <div className="flex-1">
                           <h4 className="font-medium">{party.name}</h4>
                           <div className="flex items-center gap-4 mt-2 text-sm text-slate-600">
-                            <span className="capitalize">
-                              Type: {party.party_type.replace('_', ' ')}
-                            </span>
+                            <span className="capitalize">Type: {party.party_type.replace('_', ' ')}</span>
                             <span className="capitalize">Role: {party.role}</span>
                           </div>
                         </div>
@@ -860,7 +966,6 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
-          {/* Documents Tab */}
           <TabsContent value="documents">
             <Card>
               <CardHeader>
@@ -877,11 +982,7 @@ export default function CaseDetailPage() {
                   <div className="text-center py-12">
                     <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-600 mb-4">No documents uploaded</p>
-                    <Button
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => setDocumentDialogOpen(true)}
-                    >
+                    <Button variant="outline" className="gap-2" onClick={() => setDocumentDialogOpen(true)}>
                       <Upload className="h-4 w-4" />
                       Upload First Document
                     </Button>
@@ -903,9 +1004,7 @@ export default function CaseDetailPage() {
                               <p className="text-sm text-slate-600 mt-1">{doc.description}</p>
                             )}
                             <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-                              <span>
-                                Uploaded: {format(new Date(doc.uploaded_at), 'MMM dd, yyyy')}
-                              </span>
+                              <span>Uploaded: {format(new Date(doc.uploaded_at), 'MMM dd, yyyy')}</span>
                               {doc.file_type && <span>Type: {doc.file_type}</span>}
                             </div>
                           </div>
@@ -977,13 +1076,9 @@ export default function CaseDetailPage() {
                             onClick={async () => {
                               if (confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
                                 try {
-                                  // Delete from storage
                                   if (doc.file_path) {
-                                    await supabase.storage
-                                      .from('case-documents')
-                                      .remove([doc.file_path]);
+                                    await supabase.storage.from('case-documents').remove([doc.file_path]);
                                   }
-                                  // Delete from database
                                   const { error } = await (supabase as any)
                                     .from('documents')
                                     .delete()
@@ -1013,7 +1108,6 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
-          {/* Tasks Tab */}
           <TabsContent value="tasks">
             <Card>
               <CardHeader>
@@ -1030,11 +1124,7 @@ export default function CaseDetailPage() {
                   <div className="text-center py-12">
                     <CheckSquare className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-600 mb-4">No tasks created</p>
-                    <Button
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => setTaskDialogOpen(true)}
-                    >
+                    <Button variant="outline" className="gap-2" onClick={() => setTaskDialogOpen(true)}>
                       <Plus className="h-4 w-4" />
                       Create First Task
                     </Button>
@@ -1070,7 +1160,6 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
-          {/* Events Tab */}
           <TabsContent value="events">
             <Card>
               <CardHeader>
@@ -1087,11 +1176,7 @@ export default function CaseDetailPage() {
                   <div className="text-center py-12">
                     <Calendar className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-600 mb-4">No events scheduled</p>
-                    <Button
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => setEventDialogOpen(true)}
-                    >
+                    <Button variant="outline" className="gap-2" onClick={() => setEventDialogOpen(true)}>
                       <Plus className="h-4 w-4" />
                       Schedule First Event
                     </Button>
@@ -1128,7 +1213,6 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
-          {/* Land Parcels Tab */}
           <TabsContent value="land">
             <Card>
               <CardHeader>
@@ -1145,11 +1229,7 @@ export default function CaseDetailPage() {
                   <div className="text-center py-12">
                     <MapPin className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-600 mb-4">No land parcels linked</p>
-                    <Button
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => setLandParcelDialogOpen(true)}
-                    >
+                    <Button variant="outline" className="gap-2" onClick={() => setLandParcelDialogOpen(true)}>
                       <Plus className="h-4 w-4" />
                       Link First Parcel
                     </Button>
@@ -1194,7 +1274,66 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
-          {/* Alerts Tab */}
+          <TabsContent value="assignments">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserCheck className="h-5 w-5" />
+                  Assignment History
+                </CardTitle>
+                <CardDescription>Current and previous officers assigned to this case</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {currentAssignment && (
+                  <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Current assigned officer</div>
+                    <div className="mt-1 text-lg font-semibold text-emerald-950">
+                      {profileName(currentAssignment.assigned_officer_id || currentAssignment.assigned_to)}
+                    </div>
+                    <p className="mt-1 text-sm text-emerald-800">
+                      Assigned {format(new Date(currentAssignment.assigned_at), 'dd MMM yyyy, h:mm a')}
+                      {currentAssignment.assignment_reason ? ` · ${currentAssignment.assignment_reason}` : ''}
+                    </p>
+                  </div>
+                )}
+                {caseAssignments.length === 0 ? (
+                  <p className="text-center py-12 text-slate-500">No assignment history recorded</p>
+                ) : (
+                  <div className="space-y-3">
+                    {caseAssignments.map((assignment) => (
+                      <div key={assignment.id} className="rounded-lg border bg-white p-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-slate-900">
+                                {profileName(assignment.assigned_officer_id || assignment.assigned_to)}
+                              </h4>
+                              {(assignment.is_current || assignment.status === 'active') && <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">Current</Badge>}
+                              <Badge variant="outline" className="capitalize">{(assignment.assignment_type || 'assignment').replace(/_/g, ' ')}</Badge>
+                            </div>
+                            <p className="mt-1 text-sm text-slate-600">
+                              Previous officer: {profileName(assignment.previous_officer_id)}
+                            </p>
+                            {(assignment.assignment_reason || assignment.remarks) && (
+                              <p className="mt-2 text-sm text-slate-700">Reason: {assignment.assignment_reason || assignment.remarks}</p>
+                            )}
+                          </div>
+                          <div className="text-sm text-slate-500 md:text-right">
+                            <div>Assigned: {format(new Date(assignment.assigned_at), 'dd MMM yyyy, h:mm a')}</div>
+                            {(assignment.ended_at || assignment.completed_at) && (
+                              <div>Ended: {format(new Date(assignment.ended_at || assignment.completed_at || assignment.assigned_at), 'dd MMM yyyy, h:mm a')}</div>
+                            )}
+                            <div>Entered by: {profileName(assignment.created_by || assignment.assigned_by_user_id || assignment.assigned_by)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="alerts">
             <Card>
               <CardHeader>
@@ -1319,9 +1458,7 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
-          {/* Costs Tab */}
           <TabsContent value="costs" className="space-y-4">
-            {/* Prominent Add Cost Section */}
             <Card className="border-2 border-dashed border-[#8B2332]/30 bg-[#8B2332]/5">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1346,7 +1483,6 @@ export default function CaseDetailPage() {
             <CostList caseId={caseId} onRefresh={loadCaseData} />
           </TabsContent>
 
-          {/* Court Order Tab */}
           <TabsContent value="court-order" className="space-y-4">
             <Card>
               <CardHeader>
@@ -1454,7 +1590,6 @@ export default function CaseDetailPage() {
             </Card>
           </TabsContent>
 
-          {/* Closure Tab */}
           <TabsContent value="closure" className="space-y-4">
             <Card>
               <CardHeader>
@@ -1493,7 +1628,7 @@ export default function CaseDetailPage() {
                     <div className="grid gap-4 md:grid-cols-2">
                       <div>
                         <Label className="text-xs text-green-700">Closure Date</Label>
-                        <p className="font-medium text-green-900">{format(new Date(caseData.created_at), 'MMM dd, yyyy')}</p>
+                        <p className="font-medium text-green-900">{caseData.closure_date ? format(new Date(caseData.closure_date), 'MMM dd, yyyy') : format(new Date(caseData.created_at), 'MMM dd, yyyy')}</p>
                       </div>
                       <div>
                         <Label className="text-xs text-green-700">Final Status</Label>
@@ -1579,7 +1714,7 @@ export default function CaseDetailPage() {
                   <History className="h-5 w-5" />
                   Case History
                 </CardTitle>
-                <CardDescription>Timeline of all actions and changes</CardDescription>
+                <CardDescription>Readable chronological record of every material case activity</CardDescription>
               </CardHeader>
               <CardContent>
                 {caseHistory.length === 0 ? (
@@ -1589,22 +1724,34 @@ export default function CaseDetailPage() {
                     {caseHistory.map((entry, index) => (
                       <div key={entry.id} className="flex gap-4">
                         <div className="flex flex-col items-center">
-                          <div className="w-2 h-2 rounded-full bg-blue-600" />
-                          {index < caseHistory.length - 1 && (
-                            <div className="w-0.5 h-full bg-slate-200 mt-2" />
-                          )}
+                          <div className="w-2.5 h-2.5 rounded-full bg-dlpp-purple" />
+                          {index < caseHistory.length - 1 && <div className="w-0.5 h-full bg-slate-200 mt-2" />}
                         </div>
                         <div className="flex-1 pb-6">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="font-medium">{entry.action}</h4>
-                              {entry.description && (
-                                <p className="text-sm text-slate-600 mt-1">{entry.description}</p>
-                              )}
+                          <div className="rounded-lg border bg-white p-4">
+                            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                              <div>
+                                <h4 className="font-medium text-slate-900">{entry.action}</h4>
+                                {entry.description && <p className="text-sm text-slate-600 mt-1">{entry.description}</p>}
+                                {entry.reason && <p className="mt-2 text-sm text-slate-700"><span className="font-medium">Reason:</span> {entry.reason}</p>}
+                                {entry.changed_fields && entry.changed_fields.length > 0 && (
+                                  <div className="mt-3 flex flex-wrap gap-1">
+                                    {entry.changed_fields.map((field) => <Badge key={field} variant="outline" className="text-xs">{field}</Badge>)}
+                                  </div>
+                                )}
+                                {(entry.old_value !== undefined || entry.new_value !== undefined) && (
+                                  <div className="mt-3 grid gap-2 text-xs md:grid-cols-2">
+                                    <div className="rounded bg-slate-50 p-2"><span className="font-medium">Previous:</span> {formatValue(entry.old_value)}</div>
+                                    <div className="rounded bg-emerald-50 p-2"><span className="font-medium">New:</span> {formatValue(entry.new_value)}</div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-xs text-slate-500 md:text-right">
+                                <div>{format(new Date(entry.created_at), 'dd MMM yyyy, h:mm a')}</div>
+                                <div>Changed by: {profileName(entry.performed_by || entry.created_by)}</div>
+                                {entry.source_module && <div>Source: {entry.source_module}</div>}
+                              </div>
                             </div>
-                            <time className="text-xs text-slate-500 whitespace-nowrap ml-4">
-                              {format(new Date(entry.created_at), 'MMM dd, yyyy h:mm a')}
-                            </time>
                           </div>
                         </div>
                       </div>
@@ -1614,9 +1761,52 @@ export default function CaseDetailPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="audit-trail">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5" />
+                  Audit Trail
+                </CardTitle>
+                <CardDescription>Technical read-only log for authorised audit users</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {caseAuditLogs.length === 0 ? (
+                  <p className="text-center py-12 text-slate-500">No audit records visible for this case, or you do not have audit trail permission.</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                        <tr>
+                          <th className="px-4 py-3">Date / Time</th>
+                          <th className="px-4 py-3">User</th>
+                          <th className="px-4 py-3">Action</th>
+                          <th className="px-4 py-3">Table</th>
+                          <th className="px-4 py-3">Changed Fields</th>
+                          <th className="px-4 py-3">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {caseAuditLogs.map((log) => (
+                          <tr key={log.id} className="border-t">
+                            <td className="whitespace-nowrap px-4 py-3 text-slate-600">{format(new Date(log.created_at), 'dd MMM yyyy HH:mm')}</td>
+                            <td className="px-4 py-3 text-slate-700">{log.user_full_name || profileName(log.user_id)}</td>
+                            <td className="px-4 py-3"><Badge variant="outline" className="capitalize">{log.action}</Badge></td>
+                            <td className="px-4 py-3 font-mono text-xs text-slate-500">{log.table_name || log.record_type || '—'}</td>
+                            <td className="px-4 py-3 text-xs text-slate-600">{log.changed_fields?.length ? log.changed_fields.join(', ') : '—'}</td>
+                            <td className="px-4 py-3 text-xs text-slate-600">{log.reason || formatValue(log.details?.reason) || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
 
-        {/* Hidden controlled dialogs */}
         <AddPartyDialog
           caseId={caseId}
           onSuccess={loadCaseData}
@@ -1648,7 +1838,6 @@ export default function CaseDetailPage() {
           onOpenChange={setLandParcelDialogOpen}
         />
 
-        {/* Edit dialogs */}
         {selectedParty && (
           <EditPartyDialog
             party={selectedParty}
@@ -1690,7 +1879,6 @@ export default function CaseDetailPage() {
           />
         )}
 
-        {/* Stage change confirmation */}
         <AlertDialog
           open={pendingStage !== null}
           onOpenChange={(open) => {
@@ -1704,6 +1892,16 @@ export default function CaseDetailPage() {
                 {caseData
                   ? `This will change the workflow stage from “${stageLabel(caseData.status)}” to “${pendingStage?.label}”. A record of this change is added to the case timeline.`
                   : ''}
+                <div className="mt-4 space-y-2 text-left">
+                  <Label htmlFor="stage-change-reason">Reason for stage change</Label>
+                  <Textarea
+                    id="stage-change-reason"
+                    value={stageChangeReason}
+                    onChange={(event) => setStageChangeReason(event.target.value)}
+                    placeholder="Explain why this workflow stage is changing."
+                    rows={3}
+                  />
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

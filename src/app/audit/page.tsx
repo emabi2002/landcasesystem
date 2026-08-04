@@ -39,7 +39,7 @@ interface AuditLog {
   record_id: string | null;
   record_type: string | null;
   details: unknown;
-  logged_at: string;
+  created_at: string;
 }
 
 const ACTION_BADGE: Record<string, string> = {
@@ -95,9 +95,8 @@ export default function AuditTrailPage() {
     }
     setCurrentUserId(user.id);
     const perms = await getModulePermissions('audit_trail');
-    // Fallback: allow if module not configured (setup phase) — read-only anyway.
-    const canRead = perms ? perms.can_read : true;
-    setCanExport(perms ? perms.can_export : true);
+    const canRead = perms ? perms.can_read : false;
+    setCanExport(perms ? perms.can_export : false);
     setAllowed(canRead);
     if (canRead) {
       await load();
@@ -112,7 +111,7 @@ export default function AuditTrailPage() {
         (supabase as any)
           .from('audit_logs')
           .select('*')
-          .order('logged_at', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(1000),
         (supabase as any).from('profiles').select('id, full_name, email'),
         (supabase as any).from('modules').select('id, module_name'),
@@ -165,7 +164,7 @@ export default function AuditTrailPage() {
       if (myActivityOnly && l.user_id !== currentUserId) return false;
       if (actionFilter !== 'all' && l.action !== actionFilter) return false;
       if (moduleFilter !== 'all' && l.module_id !== moduleFilter) return false;
-      const day = l.logged_at?.slice(0, 10);
+      const day = l.created_at?.slice(0, 10);
       if (dateFrom && (!day || day < dateFrom)) return false;
       if (dateTo && (!day || day > dateTo)) return false;
       if (!q) return true;
@@ -194,7 +193,7 @@ export default function AuditTrailPage() {
   const exportExcel = () => {
     try {
       const rows = filtered.map((l) => ({
-        'Date/Time': l.logged_at ? format(new Date(l.logged_at), 'yyyy-MM-dd HH:mm:ss') : '',
+        'Date/Time': l.created_at ? format(new Date(l.created_at), 'yyyy-MM-dd HH:mm:ss') : '',
         User: userMap[l.user_id ?? ''] ?? l.user_id ?? '',
         Action: l.action,
         Module: moduleMap[l.module_id ?? ''] ?? '',
@@ -397,7 +396,7 @@ export default function AuditTrailPage() {
                     {filtered.map((l) => (
                       <tr key={l.id} className="border-b border-slate-100 hover:bg-slate-50">
                         <td className="whitespace-nowrap px-4 py-3 text-slate-600">
-                          {l.logged_at ? format(new Date(l.logged_at), 'dd MMM yyyy HH:mm') : '—'}
+                          {l.created_at ? format(new Date(l.created_at), 'dd MMM yyyy HH:mm') : '—'}
                         </td>
                         <td className="px-4 py-3 text-slate-700">
                           {userMap[l.user_id ?? ''] ?? (l.user_id ? l.user_id.slice(0, 8) : '—')}

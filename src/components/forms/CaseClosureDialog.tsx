@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { logAudit } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Archive, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Archive, AlertTriangle } from 'lucide-react';
 
 interface CaseClosureDialogProps {
   caseId: string;
@@ -70,7 +71,6 @@ export function CaseClosureDialog({ caseId, caseNumber, caseTitle, onSuccess }: 
       return;
     }
 
-    // Show confirmation dialog
     setConfirmOpen(true);
   };
 
@@ -79,48 +79,68 @@ export function CaseClosureDialog({ caseId, caseNumber, caseTitle, onSuccess }: 
     setConfirmOpen(false);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Update case status to closed
+      const reason = formData.closure_notes || formData.outcome_summary || 'Case formally closed';
+
       const { error: caseError } = await (supabase as any)
         .from('cases')
         .update({
           status: 'closed',
-          updated_at: new Date().toISOString()
+          closure_type: formData.closure_status,
+          closure_date: formData.closure_date,
+          closure_notes: reason,
+          updated_by: user.id,
+          last_change_reason: reason,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', caseId);
 
       if (caseError) throw caseError;
 
-      // Try to insert closure record
       try {
         await (supabase as any)
           .from('case_closures')
           .insert({
             case_id: caseId,
+            closure_type: formData.closure_status,
             closure_status: formData.closure_status,
             closure_date: formData.closure_date,
             final_outcome: formData.final_outcome,
             outcome_summary: formData.outcome_summary,
             archive_location: formData.archive_location,
             closure_notes: formData.closure_notes,
+            compliance_completed: formData.compliance_completed,
+            documents_archived: formData.documents_archived,
+            costs_finalized: formData.costs_finalized,
+            judgment_registered: formData.judgment_registered,
+            created_by: user.id,
+            updated_by: user.id,
             closed_by: user.id,
           });
       } catch (e) {
-        // Table might not exist, continue
         console.log('Closure table not available, continuing...');
       }
 
-      // Add to case history
-      await (supabase as any)
-        .from('case_history')
-        .insert({
-          case_id: caseId,
-          action: 'Case Closed',
-          description: `Case closed with status: ${formData.closure_status}. Outcome: ${formData.final_outcome}. ${formData.closure_notes ? `Notes: ${formData.closure_notes}` : ''}`,
-          performed_by: user.id,
-        });
+      await (supabase as any).from('case_history').insert({
+        case_id: caseId,
+        action: 'Case Closed',
+        activity_type: 'case_closed',
+        entity_type: 'case_closures',
+        description: `Case closed with status: ${formData.closure_status}. Outcome: ${formData.final_outcome}. ${formData.closure_notes ? `Notes: ${formData.closure_notes}` : ''}`,
+        reason,
+        source_module: 'case_closure',
+        performed_by: user.id,
+      });
+
+      await logAudit('update', 'cases', caseId, 'case_closure', {
+        closure_status: formData.closure_status,
+        final_outcome: formData.final_outcome,
+        reason,
+      });
 
       toast.success('Case closed successfully!');
       setOpen(false);
@@ -167,7 +187,6 @@ export function CaseClosureDialog({ caseId, caseNumber, caseTitle, onSuccess }: 
           </DialogHeader>
 
           <form onSubmit={handleInitiateClose} className="space-y-6">
-            {/* Warning Banner */}
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
@@ -180,7 +199,6 @@ export function CaseClosureDialog({ caseId, caseNumber, caseTitle, onSuccess }: 
               </div>
             </div>
 
-            {/* Closure Status & Date */}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="closure_status">Closure Status *</Label>
@@ -213,7 +231,6 @@ export function CaseClosureDialog({ caseId, caseNumber, caseTitle, onSuccess }: 
               </div>
             </div>
 
-            {/* Final Outcome */}
             <div className="space-y-2">
               <Label htmlFor="final_outcome">Final Outcome *</Label>
               <Select
@@ -237,7 +254,6 @@ export function CaseClosureDialog({ caseId, caseNumber, caseTitle, onSuccess }: 
               </Select>
             </div>
 
-            {/* Outcome Summary */}
             <div className="space-y-2">
               <Label htmlFor="outcome_summary">Outcome Summary</Label>
               <Textarea
@@ -249,7 +265,6 @@ export function CaseClosureDialog({ caseId, caseNumber, caseTitle, onSuccess }: 
               />
             </div>
 
-            {/* Pre-Closure Checklist */}
             <div className="space-y-3">
               <Label className="text-base font-semibold">Pre-Closure Checklist</Label>
               <div className="grid gap-3 p-4 bg-slate-50 rounded-lg">
@@ -304,7 +319,6 @@ export function CaseClosureDialog({ caseId, caseNumber, caseTitle, onSuccess }: 
               </div>
             </div>
 
-            {/* Archive Location */}
             <div className="space-y-2">
               <Label htmlFor="archive_location">Archive Location</Label>
               <Input
@@ -315,7 +329,6 @@ export function CaseClosureDialog({ caseId, caseNumber, caseTitle, onSuccess }: 
               />
             </div>
 
-            {/* Closure Notes */}
             <div className="space-y-2">
               <Label htmlFor="closure_notes">Closure Notes</Label>
               <Textarea
@@ -331,11 +344,7 @@ export function CaseClosureDialog({ caseId, caseNumber, caseTitle, onSuccess }: 
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={loading || !canClose}
-                className="bg-red-600 hover:bg-red-700"
-              >
+              <Button type="submit" disabled={loading || !canClose} className="bg-red-600 hover:bg-red-700">
                 {loading ? 'Closing...' : 'Close Case'}
               </Button>
             </DialogFooter>
@@ -343,7 +352,6 @@ export function CaseClosureDialog({ caseId, caseNumber, caseTitle, onSuccess }: 
         </DialogContent>
       </Dialog>
 
-      {/* Confirmation Dialog */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -360,17 +368,12 @@ export function CaseClosureDialog({ caseId, caseNumber, caseTitle, onSuccess }: 
                 <li>Archive all case records</li>
                 <li>Prevent further modifications without admin approval</li>
               </ul>
-              <p className="font-semibold text-slate-900">
-                Are you sure you want to proceed?
-              </p>
+              <p className="font-semibold text-slate-900">Are you sure you want to proceed?</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmClose}
-              className="bg-red-600 hover:bg-red-700"
-            >
+            <AlertDialogAction onClick={handleConfirmClose} className="bg-red-600 hover:bg-red-700">
               Yes, Close Case
             </AlertDialogAction>
           </AlertDialogFooter>

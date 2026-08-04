@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { permissionErrorResponse, requireModulePermission } from '@/lib/auth/require-permission';
 
+function pickString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
 // Helper function to extract opposing party name from parties description
 function extractOpposingParty(partiesDescription: string, dlppRole: string): string {
   // Format: "Plaintiff Name -v- Defendant Name"
@@ -51,9 +55,23 @@ export async function POST(request: NextRequest) {
     const caseInsertData: any = {
       case_number: caseNumber,
       title: caseTitle,
+      description: pickString(formData.description),
       status: formData.status || 'under_review',
+      workflow_state: 'REGISTERED',
       priority: formData.priority || 'medium',
       case_type: formData.case_type || 'other',
+      matter_type: pickString(formData.matter_type),
+      region: pickString(formData.region),
+      court_file_number: pickString(formData.court_file_number),
+      track_number: pickString(formData.track_number),
+      case_origin: pickString(formData.mode_of_proceeding),
+      dlpp_role: pickString(formData.dlpp_role),
+      division_responsible: pickString(formData.division_responsible),
+      first_hearing_date: pickString(formData.returnable_date),
+      returnable_date: pickString(formData.returnable_date),
+      created_by: user.id,
+      updated_by: user.id,
+      last_change_reason: 'Case opened through registration workflow',
     };
 
     console.info('Inserting case with minimum fields');
@@ -84,8 +102,9 @@ export async function POST(request: NextRequest) {
           party_type: 'government_entity',
           contact_info: {
             department: 'DLPP',
-            division: formData.division_responsible
-          }
+            division: formData.division_responsible,
+          },
+          created_by: user.id,
         } as never
       );
 
@@ -109,8 +128,10 @@ export async function POST(request: NextRequest) {
               role: formData.dlpp_role === 'plaintiff' ? 'defendant' : 'plaintiff',
               party_type: 'individual',
               contact_info: {
-                lawyer: formData.opposing_lawyer_name
-              }
+                lawyer: formData.opposing_lawyer_name,
+              },
+              created_by: user.id,
+              updated_by: user.id,
             } as never
           );
 
@@ -128,11 +149,16 @@ export async function POST(request: NextRequest) {
             case_id: caseId,
             parcel_number: formData.survey_plan_no || 'N/A',
             location: formData.region || 'Not specified',
-            notes: `Land Description: ${formData.land_description}\n` +
-                   `Zoning: ${formData.zoning || 'N/A'}\n` +
-                   `Survey Plan: ${formData.survey_plan_no || 'N/A'}\n` +
-                   `Lease Type: ${formData.lease_type || 'N/A'}\n` +
-                   `Lease Period: ${formData.lease_commencement_date || 'N/A'} to ${formData.lease_expiration_date || 'N/A'}`
+            notes:
+              `Land Description: ${formData.land_description}\n` +
+              `Zoning: ${formData.zoning || 'N/A'}\n` +
+              `Survey Plan: ${formData.survey_plan_no || 'N/A'}\n` +
+              `Lease Type: ${formData.lease_type || 'N/A'}\n` +
+              `Lease Period: ${formData.lease_commencement_date || 'N/A'} to ${
+                formData.lease_expiration_date || 'N/A'
+              }`,
+            created_by: user.id,
+            updated_by: user.id,
           } as never
         );
 
@@ -153,7 +179,9 @@ export async function POST(request: NextRequest) {
               description: `Case: ${formData.title}\nMatter Type: ${formData.matter_type || 'N/A'}\nCourt Reference: ${formData.court_file_number || 'N/A'}`,
               event_date: formData.returnable_date,
               location: 'Court',
-              auto_created: true
+              auto_created: true,
+              created_by: user.id,
+              updated_by: user.id,
             } as never
           );
 
@@ -172,14 +200,19 @@ export async function POST(request: NextRequest) {
           {
             case_id: caseId,
             title: `Case Assignment: ${formData.case_number}`,
-            description: `DLPP Action Officer: ${formData.dlpp_action_officer}\n` +
-                        `Sol Gen Officer: ${formData.sol_gen_officer || 'Not assigned'}\n` +
-                        `Division Responsible: ${formData.division_responsible || 'Not specified'}\n` +
-                        `Assignment Date: ${formData.officer_assigned_date || 'N/A'}\n` +
-                        `Notes: ${formData.assignment_footnote || 'N/A'}`,
-            due_date: formData.returnable_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            description:
+              `DLPP Action Officer: ${formData.dlpp_action_officer}\n` +
+              `Sol Gen Officer: ${formData.sol_gen_officer || 'Not assigned'}\n` +
+              `Division Responsible: ${formData.division_responsible || 'Not specified'}\n` +
+              `Assignment Date: ${formData.officer_assigned_date || 'N/A'}\n` +
+              `Notes: ${formData.assignment_footnote || 'N/A'}`,
+            due_date:
+              formData.returnable_date ||
+              new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             status: 'pending',
-            priority: formData.priority
+            priority: formData.priority,
+            created_by: user.id,
+            updated_by: user.id,
           } as never
         );
 
@@ -193,45 +226,48 @@ export async function POST(request: NextRequest) {
       const fullFormDataRecord = {
         case_id: caseId,
         title: `Case Registration Data - ${caseNumber}`,
-        description: `COMPLETE CASE REGISTRATION DATA:\n\n` +
-                    `BASIC INFORMATION:\n` +
-                    `Description: ${formData.description || 'N/A'}\n` +
-                    `Matter Type: ${formData.matter_type || 'N/A'}\n` +
-                    `Region: ${formData.region || 'N/A'}\n` +
-                    `DLPP Role: ${formData.dlpp_role || 'N/A'}\n` +
-                    `Created By: ${formData.user_id || 'N/A'}\n\n` +
-                    `COURT INFORMATION:\n` +
-                    `Track Number: ${formData.track_number || 'N/A'}\n` +
-                    `Court File Number: ${formData.court_file_number || 'N/A'}\n` +
-                    `Parties Description: ${formData.parties_description || 'N/A'}\n\n` +
-                    `FILING INFORMATION:\n` +
-                    `Proceeding Filed Date: ${formData.proceeding_filed_date || 'N/A'}\n` +
-                    `Documents Served Date: ${formData.documents_served_date || 'N/A'}\n` +
-                    `Court Documents Type: ${formData.court_documents_type || 'N/A'}\n\n` +
-                    `HEARING INFORMATION:\n` +
-                    `Returnable Date: ${formData.returnable_date || 'N/A'}\n` +
-                    `Returnable Type: ${formData.returnable_type || 'N/A'}\n\n` +
-                    `ASSIGNMENT:\n` +
-                    `Division Responsible: ${formData.division_responsible || 'N/A'}\n` +
-                    `DLPP Action Officer: ${formData.dlpp_action_officer || 'N/A'}\n` +
-                    `Sol Gen Officer: ${formData.sol_gen_officer || 'N/A'}\n` +
-                    `Officer Assigned Date: ${formData.officer_assigned_date || 'N/A'}\n` +
-                    `Assignment Footnote: ${formData.assignment_footnote || 'N/A'}\n\n` +
-                    `LEGAL DETAILS:\n` +
-                    `Allegations: ${formData.allegations || 'N/A'}\n` +
-                    `Reliefs Sought: ${formData.reliefs_sought || 'N/A'}\n` +
-                    `Opposing Lawyer: ${formData.opposing_lawyer_name || 'N/A'}\n` +
-                    `Section 5 Notice: ${formData.section5_notice ? 'Yes' : 'No'}\n\n` +
-                    `LAND INFORMATION:\n` +
-                    `Description: ${formData.land_description || 'N/A'}\n` +
-                    `Zoning: ${formData.zoning || 'N/A'}\n` +
-                    `Survey Plan No: ${formData.survey_plan_no || 'N/A'}\n` +
-                    `Lease Type: ${formData.lease_type || 'N/A'}\n` +
-                    `Lease Commencement: ${formData.lease_commencement_date || 'N/A'}\n` +
-                    `Lease Expiration: ${formData.lease_expiration_date || 'N/A'}`,
+        description:
+          `COMPLETE CASE REGISTRATION DATA:\n\n` +
+          `BASIC INFORMATION:\n` +
+          `Description: ${formData.description || 'N/A'}\n` +
+          `Matter Type: ${formData.matter_type || 'N/A'}\n` +
+          `Region: ${formData.region || 'N/A'}\n` +
+          `DLPP Role: ${formData.dlpp_role || 'N/A'}\n` +
+          `Created By: ${formData.user_id || 'N/A'}\n\n` +
+          `COURT INFORMATION:\n` +
+          `Track Number: ${formData.track_number || 'N/A'}\n` +
+          `Court File Number: ${formData.court_file_number || 'N/A'}\n` +
+          `Parties Description: ${formData.parties_description || 'N/A'}\n\n` +
+          `FILING INFORMATION:\n` +
+          `Proceeding Filed Date: ${formData.proceeding_filed_date || 'N/A'}\n` +
+          `Documents Served Date: ${formData.documents_served_date || 'N/A'}\n` +
+          `Court Documents Type: ${formData.court_documents_type || 'N/A'}\n\n` +
+          `HEARING INFORMATION:\n` +
+          `Returnable Date: ${formData.returnable_date || 'N/A'}\n` +
+          `Returnable Type: ${formData.returnable_type || 'N/A'}\n\n` +
+          `ASSIGNMENT:\n` +
+          `Division Responsible: ${formData.division_responsible || 'N/A'}\n` +
+          `DLPP Action Officer: ${formData.dlpp_action_officer || 'N/A'}\n` +
+          `Sol Gen Officer: ${formData.sol_gen_officer || 'N/A'}\n` +
+          `Officer Assigned Date: ${formData.officer_assigned_date || 'N/A'}\n` +
+          `Assignment Footnote: ${formData.assignment_footnote || 'N/A'}\n\n` +
+          `LEGAL DETAILS:\n` +
+          `Allegations: ${formData.allegations || 'N/A'}\n` +
+          `Reliefs Sought: ${formData.reliefs_sought || 'N/A'}\n` +
+          `Opposing Lawyer: ${formData.opposing_lawyer_name || 'N/A'}\n` +
+          `Section 5 Notice: ${formData.section5_notice ? 'Yes' : 'No'}\n\n` +
+          `LAND INFORMATION:\n` +
+          `Description: ${formData.land_description || 'N/A'}\n` +
+          `Zoning: ${formData.zoning || 'N/A'}\n` +
+          `Survey Plan No: ${formData.survey_plan_no || 'N/A'}\n` +
+          `Lease Type: ${formData.lease_type || 'N/A'}\n` +
+          `Lease Commencement: ${formData.lease_commencement_date || 'N/A'}\n` +
+          `Lease Expiration: ${formData.lease_expiration_date || 'N/A'}`,
         document_type: 'registration_data',
         file_url: '#', // Placeholder - this is metadata, not a file
-        uploaded_by: user.id
+        uploaded_by: user.id,
+        created_by: user.id,
+        updated_by: user.id,
       };
 
       const { error: docError } = await admin
@@ -259,9 +295,15 @@ export async function POST(request: NextRequest) {
               dlpp_role: formData.dlpp_role,
               matter_type: formData.matter_type,
               mode_of_proceeding: formData.mode_of_proceeding,
-              registration_method: 'web_form'
+              registration_method: 'web_form',
             },
-            created_by: user.id
+            created_by: user.id,
+            performed_by: user.id,
+            activity_type: 'case_created',
+            entity_type: 'cases',
+            entity_id: caseId,
+            source_module: 'case_registration',
+            reason: 'New case registration',
           } as never
         );
 
@@ -271,7 +313,28 @@ export async function POST(request: NextRequest) {
       console.error('Warning: Case history table may not exist');
     }
 
-    // STEP 9: Notify managers/senior legal officers for assignment
+    // STEP 9: Write audit log for case registration
+    try {
+      await admin.from('audit_logs' as never).insert({
+        user_id: user.id,
+        action: 'create',
+        table_name: 'cases',
+        record_type: 'cases',
+        record_id: caseId,
+        case_id: caseId,
+        source_module: 'case_registration',
+        reason: 'New case registration',
+        new_data: newCase,
+        details: {
+          case_number: caseNumber,
+          created_via: 'api/cases/register',
+        },
+      } as never);
+    } catch {
+      console.error('Warning: Could not write audit log for case registration');
+    }
+
+    // STEP 10: Notify managers/senior legal officers for assignment
     const { data: managers } = await admin
       .from('profiles' as never)
       .select('id')
@@ -283,7 +346,7 @@ export async function POST(request: NextRequest) {
         case_id: caseId,
         title: 'New Case Registered - Awaiting Assignment',
         message: `New litigation case ${caseNumber} has been registered and is awaiting action officer assignment.`,
-        type: 'case_update'
+        type: 'case_update',
       }));
 
       const { error: notifError } = await admin
@@ -300,7 +363,7 @@ export async function POST(request: NextRequest) {
       success: true,
       case: newCase,
       workflow_state: 'REGISTERED',
-      message: 'Case registered successfully. Managers have been notified for assignment.'
+      message: 'Case registered successfully. Managers have been notified for assignment.',
     });
   } catch (error: any) {
     const response = permissionErrorResponse(error);
@@ -310,7 +373,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to register case'
+        error: error.message || 'Failed to register case',
       },
       { status: 500 }
     );

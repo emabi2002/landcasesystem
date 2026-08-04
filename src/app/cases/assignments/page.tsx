@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 import { supabase } from '@/lib/supabase';
+import { logAudit } from '@/lib/permissions';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,8 +17,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import {
   UserCheck,
-  Clock,
-  AlertCircle,
   Search,
   Filter,
   User,
@@ -44,7 +43,7 @@ interface Officer {
   id: string;
   email: string;
   full_name: string | null;
-  role: string;
+  legacy_role: string | null;
   department: string | null;
 }
 
@@ -81,11 +80,15 @@ export default function CaseAssignmentsPage() {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('is_active', true)
-        .in('role', ['action_officer_litigation_lawyer', 'senior_legal_officer_litigation', 'admin']);
+        .eq('active', true)
+        .order('full_name', { ascending: true });
 
       if (!profilesError && profiles) {
-        setOfficers(profiles as Officer[]);
+        setOfficers(
+          (profiles as Officer[]).filter((profile) =>
+            ['action_officer_litigation_lawyer', 'senior_legal_officer_litigation', 'admin'].includes(profile.legacy_role || '')
+          )
+        );
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -108,6 +111,11 @@ export default function CaseAssignmentsPage() {
       return;
     }
 
+    if (assignmentNotes.trim().length < 5) {
+      toast.error('Please provide a reason or instruction for this assignment.');
+      return;
+    }
+
     setIsAssigning(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -119,6 +127,8 @@ export default function CaseAssignmentsPage() {
           assigned_officer_id: selectedOfficer,
           status: 'assigned',
           updated_at: new Date().toISOString(),
+          updated_by: user.id,
+          last_change_reason: assignmentNotes.trim(),
         })
         .eq('id', selectedCase.id);
 
@@ -127,12 +137,32 @@ export default function CaseAssignmentsPage() {
       try {
         await (supabase as any)
           .from('case_assignments')
+          .update({
+            status: 'completed',
+            is_current: false,
+            ended_at: new Date().toISOString(),
+            updated_by: user.id,
+          })
+          .eq('case_id', selectedCase.id)
+          .eq('is_current', true);
+      } catch (e) {
+        console.log('Existing assignment update unavailable, continuing...');
+      }
+
+      try {
+        await (supabase as any)
+          .from('case_assignments')
           .insert({
             case_id: selectedCase.id,
-            assigned_to: selectedOfficer,
-            assigned_by: user.id,
-            instructions: assignmentNotes || null,
-            status: 'active',
+            assigned_officer_id: selectedOfficer,
+            assigned_by_user_id: user.id,
+            previous_officer_id: selectedCase.assigned_officer_id,
+            assignment_type: selectedCase.assigned_officer_id ? 'reassignment' : 'initial_assignment',
+            assignment_reason: assignmentNotes.trim(),
+            is_current: true,
+            remarks: assignmentNotes.trim(),
+            created_by: user.id,
+            updated_by: user.id,
           });
       } catch (e) {
         console.log('Assignment table not available, continuing...');
@@ -143,13 +173,29 @@ export default function CaseAssignmentsPage() {
           .from('case_history')
           .insert({
             case_id: selectedCase.id,
-            action: 'Case Assigned',
-            description: `Case assigned to officer. ${assignmentNotes ? `Notes: ${assignmentNotes}` : ''}`,
+            action: selectedCase.assigned_officer_id ? 'Case Reassigned' : 'Case Assigned',
+            description: selectedCase.assigned_officer_id
+              ? `Case reassigned to officer. Reason: ${assignmentNotes.trim()}`
+              : `Case assigned to officer. Instructions: ${assignmentNotes.trim()}`,
             performed_by: user.id,
+            activity_type: selectedCase.assigned_officer_id ? 'officer_reassigned' : 'officer_assigned',
+            entity_type: 'case_assignments',
+            old_value: selectedCase.assigned_officer_id ? { officer_id: selectedCase.assigned_officer_id } : null,
+            new_value: { officer_id: selectedOfficer },
+            reason: assignmentNotes.trim(),
+            source_module: 'case_assignments',
+            changed_fields: ['assigned_officer_id'],
           });
       } catch (e) {
         console.log('History table not available, continuing...');
       }
+
+      await logAudit('update', 'cases', selectedCase.id, 'case_assignments', {
+        action: selectedCase.assigned_officer_id ? 'reassignment' : 'assignment',
+        previous_officer_id: selectedCase.assigned_officer_id,
+        new_officer_id: selectedOfficer,
+        reason: assignmentNotes.trim(),
+      });
 
       toast.success('Case assigned successfully!');
       setDialogOpen(false);
@@ -159,7 +205,7 @@ export default function CaseAssignmentsPage() {
       loadData();
     } catch (error) {
       console.error('Error assigning case:', error);
-      toast.error('Failed to assign case');
+      toast.error(error instanceof Error ? error.message : 'Failed to assign case');
     } finally {
       setIsAssigning(false);
     }
@@ -208,7 +254,6 @@ export default function CaseAssignmentsPage() {
   return (
     <AppLayout>
       <div className="min-h-screen bg-slate-50">
-        {/* Sticky Header Bar */}
         <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -227,10 +272,8 @@ export default function CaseAssignmentsPage() {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
-            {/* Summary Bar */}
             <div className="px-6 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-6 text-sm">
                 <span className="text-slate-600">
@@ -248,7 +291,6 @@ export default function CaseAssignmentsPage() {
               </div>
             </div>
 
-            {/* Filters Section */}
             <div className="p-6 border-b border-slate-200">
               <h2 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-4">Search & Filters</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -283,7 +325,6 @@ export default function CaseAssignmentsPage() {
               </div>
             </div>
 
-            {/* Cases List */}
             <div className="p-6">
               <h2 className="text-sm font-semibold text-slate-900 uppercase tracking-wide mb-4">Pending Cases</h2>
 
@@ -390,7 +431,7 @@ export default function CaseAssignmentsPage() {
                                           <User className="h-4 w-4" />
                                           <span>{officer.full_name || officer.email}</span>
                                           <span className="text-xs text-slate-500">
-                                            ({officer.role.replace(/_/g, ' ')})
+                                            ({(officer.legacy_role || 'staff').replace(/_/g, ' ')})
                                           </span>
                                         </div>
                                       </SelectItem>
@@ -399,9 +440,11 @@ export default function CaseAssignmentsPage() {
                                 </Select>
                               </div>
                               <div className="space-y-2">
-                                <Label className="text-xs text-slate-600">Assignment Notes</Label>
+                                <Label className="text-xs text-slate-600">
+                                  {caseItem.assigned_officer_id ? 'Reassignment Reason *' : 'Assignment Reason / Instructions *'}
+                                </Label>
                                 <Textarea
-                                  placeholder="Add any instructions or notes for the assigned officer..."
+                                  placeholder="Add a reason for reassignment or instructions for the assigned officer..."
                                   value={assignmentNotes}
                                   onChange={(e) => setAssignmentNotes(e.target.value)}
                                   rows={3}
@@ -439,7 +482,6 @@ export default function CaseAssignmentsPage() {
               )}
             </div>
 
-            {/* Footer */}
             {filteredCases.length > 0 && (
               <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 text-xs text-slate-500 flex items-center justify-between">
                 <span>Showing {filteredCases.length} of {pendingCases.length} pending cases</span>

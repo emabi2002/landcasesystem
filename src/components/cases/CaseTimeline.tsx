@@ -33,7 +33,20 @@ import {
 
 interface TimelineEvent {
   id: string;
-  type: 'case_created' | 'status_change' | 'document_added' | 'party_added' | 'task_created' | 'task_completed' | 'event_created' | 'court_order' | 'parcel_added' | 'communication';
+  type:
+    | 'case_created'
+    | 'status_change'
+    | 'document_added'
+    | 'party_added'
+    | 'task_created'
+    | 'task_completed'
+    | 'event_created'
+    | 'court_order'
+    | 'parcel_added'
+    | 'communication'
+    | 'assignment'
+    | 'closure'
+    | 'case_update';
   title: string;
   description?: string;
   date: string;
@@ -58,6 +71,9 @@ const eventIcons: Record<string, React.ElementType> = {
   court_order: Gavel,
   parcel_added: MapPin,
   communication: MessageSquare,
+  assignment: Users,
+  closure: FolderOpen,
+  case_update: ArrowRight,
 };
 
 const eventColors: Record<string, string> = {
@@ -71,6 +87,9 @@ const eventColors: Record<string, string> = {
   court_order: 'bg-red-500',
   parcel_added: 'bg-orange-500',
   communication: 'bg-cyan-500',
+  assignment: 'bg-emerald-600',
+  closure: 'bg-slate-700',
+  case_update: 'bg-blue-600',
 };
 
 const eventTypeLabels: Record<string, string> = {
@@ -84,6 +103,9 @@ const eventTypeLabels: Record<string, string> = {
   court_order: 'Court Orders',
   parcel_added: 'Land Parcels',
   communication: 'Communications',
+  assignment: 'Assignments',
+  closure: 'Closures',
+  case_update: 'Case Updates',
 };
 
 export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimelineProps) {
@@ -93,14 +115,23 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
   const [expanded, setExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Filter states
   const [showFilters, setShowFilters] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set([
-    'case_created', 'status_change', 'document_added', 'party_added',
-    'task_created', 'task_completed', 'event_created', 'court_order',
-    'parcel_added', 'communication'
+    'case_created',
+    'status_change',
+    'document_added',
+    'party_added',
+    'task_created',
+    'task_completed',
+    'event_created',
+    'court_order',
+    'parcel_added',
+    'communication',
+    'assignment',
+    'closure',
+    'case_update',
   ]));
 
   useEffect(() => {
@@ -115,10 +146,8 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
   const applyFilters = () => {
     let filtered = [...events];
 
-    // Filter by event type
     filtered = filtered.filter(e => selectedTypes.has(e.type));
 
-    // Filter by date range
     if (dateFrom) {
       const fromDate = startOfDay(parseISO(dateFrom));
       filtered = filtered.filter(e =>
@@ -162,13 +191,13 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
     selectAllTypes();
   };
 
-  const hasActiveFilters = dateFrom || dateTo || selectedTypes.size !== Object.keys(eventTypeLabels).length;
+  const hasActiveFilters =
+    dateFrom || dateTo || selectedTypes.size !== Object.keys(eventTypeLabels).length;
 
   const loadTimelineEvents = async () => {
     try {
       const timelineEvents: TimelineEvent[] = [];
 
-      // Case created event
       timelineEvents.push({
         id: 'case_created',
         type: 'case_created',
@@ -177,29 +206,35 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
         date: caseCreatedAt,
       });
 
-      // Fetch case history (includes status changes)
       const { data: historyData } = await supabase
         .from('case_history')
-        .select('id, action, description, created_at')
+        .select('id, action, description, activity_type, entity_type, created_at')
         .eq('case_id', caseId)
         .order('created_at', { ascending: false });
 
       (historyData as any[] | null)?.forEach((history: any) => {
-        // Check if it's a status change
-        if (history.action.toLowerCase().includes('status') ||
-            history.action.toLowerCase().includes('changed') ||
-            history.action.toLowerCase().includes('updated')) {
-          timelineEvents.push({
-            id: `history_${history.id}`,
-            type: 'status_change',
-            title: history.action,
-            description: history.description || undefined,
-            date: history.created_at,
-          });
-        }
+        const normalized = `${history.activity_type || history.action || ''} ${history.entity_type || ''}`.toLowerCase();
+        let type: TimelineEvent['type'] = 'case_update';
+
+        if (normalized.includes('assign')) type = 'assignment';
+        else if (normalized.includes('close') || normalized.includes('closure')) type = 'closure';
+        else if (normalized.includes('status') || normalized.includes('stage') || normalized.includes('workflow')) type = 'status_change';
+        else if (normalized.includes('document')) type = 'document_added';
+        else if (normalized.includes('party')) type = 'party_added';
+        else if (normalized.includes('event') || normalized.includes('hearing')) type = 'event_created';
+        else if (normalized.includes('court')) type = 'court_order';
+        else if (normalized.includes('communication') || normalized.includes('correspondence')) type = 'communication';
+        else if (normalized.includes('created') || normalized.includes('registered')) type = 'case_created';
+
+        timelineEvents.push({
+          id: `history_${history.id}`,
+          type,
+          title: history.action || 'Case Activity',
+          description: history.description || undefined,
+          date: history.created_at,
+        });
       });
 
-      // Fetch documents
       const { data: docs } = await supabase
         .from('documents')
         .select('id, title, uploaded_at')
@@ -216,7 +251,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
         });
       });
 
-      // Fetch parties
       const { data: parties } = await supabase
         .from('parties')
         .select('id, name, party_type, created_at')
@@ -233,7 +267,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
         });
       });
 
-      // Fetch tasks
       const { data: tasks } = await supabase
         .from('tasks')
         .select('id, title, status, created_at')
@@ -250,7 +283,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
         });
       });
 
-      // Fetch events
       const { data: caseEvents } = await supabase
         .from('events')
         .select('id, title, event_type, event_date')
@@ -267,7 +299,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
         });
       });
 
-      // Fetch land parcels
       const { data: parcels } = await supabase
         .from('land_parcels')
         .select('id, parcel_number, created_at')
@@ -284,7 +315,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
         });
       });
 
-      // Fetch court orders
       const { data: courtOrders } = await (supabase as any)
         .from('court_orders')
         .select('id, court_reference, order_type, order_date')
@@ -301,7 +331,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
         });
       });
 
-      // Fetch communications
       const { data: communications } = await supabase
         .from('communications')
         .select('id, subject, direction, communication_date')
@@ -318,7 +347,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
         });
       });
 
-      // Sort by date descending
       timelineEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setEvents(timelineEvents);
@@ -336,8 +364,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
   };
 
   const displayEvents = expanded ? filteredEvents : filteredEvents.slice(0, 5);
-
-  // Get unique event types present in the data
   const presentEventTypes = [...new Set(events.map(e => e.type))] as string[];
 
   if (loading) {
@@ -359,7 +385,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
 
   return (
     <div className="space-y-4">
-      {/* Timeline header with filters */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wide flex items-center gap-2">
           <Clock className="h-4 w-4" />
@@ -406,7 +431,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
                   )}
                 </div>
 
-                {/* Date Range */}
                 <div className="space-y-2">
                   <Label className="text-xs text-slate-600">Date Range</Label>
                   <div className="grid grid-cols-2 gap-2">
@@ -431,7 +455,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
                   </div>
                 </div>
 
-                {/* Event Types */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs text-slate-600">Event Types</Label>
@@ -486,7 +509,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
         </div>
       </div>
 
-      {/* Active filters display */}
       {hasActiveFilters && (
         <div className="flex flex-wrap gap-1.5">
           {dateFrom && (
@@ -513,7 +535,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
         </div>
       )}
 
-      {/* Timeline */}
       {filteredEvents.length === 0 ? (
         <div className="text-center py-8 text-slate-500">
           <Filter className="h-8 w-8 mx-auto mb-2 text-slate-300" />
@@ -524,22 +545,19 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
         </div>
       ) : (
         <div className="relative">
-          {/* Timeline line */}
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-200" />
 
           <div className="space-y-4">
-            {displayEvents.map((event, index) => {
+            {displayEvents.map(event => {
               const Icon = eventIcons[event.type] || Clock;
               const colorClass = eventColors[event.type] || 'bg-slate-500';
 
               return (
                 <div key={event.id} className="relative flex gap-4 pl-10">
-                  {/* Icon */}
                   <div className={`absolute left-0 p-2 rounded-full ${colorClass} shadow-sm`}>
                     <Icon className="h-3.5 w-3.5 text-white" />
                   </div>
 
-                  {/* Content */}
                   <div className="flex-1 bg-white border border-slate-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -570,7 +588,6 @@ export function CaseTimeline({ caseId, caseCreatedAt, refreshKey }: CaseTimeline
         </div>
       )}
 
-      {/* Show more/less button */}
       {filteredEvents.length > 5 && (
         <Button
           variant="ghost"

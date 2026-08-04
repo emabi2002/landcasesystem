@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { logAudit } from '@/lib/permissions';
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ interface EditCaseDialogProps {
 export function EditCaseDialog({ caseData, onSuccess }: EditCaseDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [changeReason, setChangeReason] = useState('');
   const [formData, setFormData] = useState({
     title: caseData.title || '',
     description: caseData.description || '',
@@ -55,6 +57,7 @@ export function EditCaseDialog({ caseData, onSuccess }: EditCaseDialogProps) {
       status: caseData.status,
       region: caseData.region || '',
     });
+    setChangeReason('');
   }, [caseData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,8 +65,25 @@ export function EditCaseDialog({ caseData, onSuccess }: EditCaseDialogProps) {
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
+
+      const changedFields = Object.entries({
+        title: formData.title,
+        description: formData.description || null,
+        case_type: formData.case_type,
+        priority: formData.priority,
+        status: formData.status,
+        region: formData.region || null,
+      }).filter(([key, value]) => (caseData as any)[key] !== value);
+
+      const significantFields = ['status', 'priority', 'region', 'case_type'];
+      const requiresReason = changedFields.some(([field]) => significantFields.includes(field));
+      if (requiresReason && changeReason.trim().length < 5) {
+        throw new Error('Please provide a reason for this significant case change.');
+      }
 
       const { error } = await supabase
         .from('cases')
@@ -74,22 +94,33 @@ export function EditCaseDialog({ caseData, onSuccess }: EditCaseDialogProps) {
           priority: formData.priority,
           status: formData.status,
           region: formData.region || null,
+          updated_by: user.id,
+          last_change_reason: changeReason.trim() || 'Case details updated',
         } as never)
         .eq('id', caseData.id);
 
       if (error) throw error;
 
-      // Add to case history
       await supabase.from('case_history').insert([
         {
           case_id: caseData.id,
           action: 'Case Updated',
           description: `Case details were modified by ${user.email}`,
           created_by: user.id,
+          performed_by: user.id,
+          reason: changeReason.trim() || null,
+          activity_type: 'case_update',
+          source_module: 'case_details',
         } as never,
       ]);
 
+      await logAudit('update', 'cases', caseData.id, 'cases', {
+        reason: changeReason.trim() || null,
+        changed_fields: changedFields.map(([field]) => field),
+      });
+
       toast.success('Case updated successfully!');
+      setChangeReason('');
       setOpen(false);
       onSuccess();
     } catch (error) {
@@ -133,6 +164,17 @@ export function EditCaseDialog({ caseData, onSuccess }: EditCaseDialogProps) {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="change_reason">Reason for change</Label>
+            <Textarea
+              id="change_reason"
+              placeholder="Explain why this case information is being changed. Required for status, priority, region, or case type changes."
+              value={changeReason}
+              onChange={(e) => setChangeReason(e.target.value)}
+              rows={3}
             />
           </div>
 
