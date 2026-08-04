@@ -16,7 +16,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import {
   UserCheck,
   Search,
@@ -27,7 +26,6 @@ import {
   RefreshCw,
   Plus,
   Pencil,
-  ChevronsUpDown,
   Check,
 } from 'lucide-react';
 
@@ -89,6 +87,7 @@ export default function CaseAssignmentsPage() {
   const [isAssigning, setIsAssigning] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [officerPickerOpen, setOfficerPickerOpen] = useState(false);
+  const [officerSearch, setOfficerSearch] = useState('');
   const [officerDialogOpen, setOfficerDialogOpen] = useState(false);
   const [editingOfficer, setEditingOfficer] = useState<Officer | null>(null);
   const [officerForm, setOfficerForm] = useState(emptyOfficerForm);
@@ -134,6 +133,16 @@ export default function CaseAssignmentsPage() {
   };
 
   const selectedOfficerRecord = officers.find((officer) => officer.id === selectedOfficer) || null;
+
+  const filteredOfficers = officers.filter((officer) => {
+    const q = officerSearch.trim().toLowerCase();
+    if (!q) return true;
+    return [officer.name, officer.title, officer.department, officer.division, officer.email, officer.employee_id]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(q);
+  });
 
   const openOfficerForm = (officer?: Officer | null) => {
     setEditingOfficer(officer || null);
@@ -194,6 +203,7 @@ export default function CaseAssignmentsPage() {
 
   const selectOfficer = (officer: Officer) => {
     setSelectedOfficer(officer.id);
+    setOfficerSearch('');
     setOfficerPickerOpen(false);
   };
 
@@ -210,7 +220,9 @@ export default function CaseAssignmentsPage() {
 
     setIsAssigning(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
       const selectedOfficerRecord = officers.find((officer) => officer.id === selectedOfficer);
@@ -246,43 +258,39 @@ export default function CaseAssignmentsPage() {
       }
 
       try {
-        await (supabase as any)
-          .from('case_assignments')
-          .insert({
-            case_id: selectedCase.id,
-            assigned_officer_id: selectedOfficerRecord.profile_id || null,
-            action_officer_id: selectedOfficerRecord.id,
-            assigned_by_user_id: user.id,
-            previous_officer_id: selectedCase.assigned_officer_id,
-            assignment_type: selectedCase.assigned_action_officer_id ? 'reassignment' : 'initial_assignment',
-            assignment_reason: assignmentNotes.trim(),
-            is_current: true,
-            remarks: assignmentNotes.trim(),
-            created_by: user.id,
-            updated_by: user.id,
-          });
+        await (supabase as any).from('case_assignments').insert({
+          case_id: selectedCase.id,
+          assigned_officer_id: selectedOfficerRecord.profile_id || null,
+          action_officer_id: selectedOfficerRecord.id,
+          assigned_by_user_id: user.id,
+          previous_officer_id: selectedCase.assigned_officer_id,
+          assignment_type: selectedCase.assigned_action_officer_id ? 'reassignment' : 'initial_assignment',
+          assignment_reason: assignmentNotes.trim(),
+          is_current: true,
+          remarks: assignmentNotes.trim(),
+          created_by: user.id,
+          updated_by: user.id,
+        });
       } catch (e) {
         console.log('Assignment table not available, continuing...');
       }
 
       try {
-        await (supabase as any)
-          .from('case_history')
-          .insert({
-            case_id: selectedCase.id,
-            action: selectedCase.assigned_action_officer_id ? 'Case Reassigned' : 'Case Assigned',
-            description: selectedCase.assigned_action_officer_id
-              ? `Case reassigned to action officer. Reason: ${assignmentNotes.trim()}`
-              : `Case assigned to action officer. Instructions: ${assignmentNotes.trim()}`,
-            performed_by: user.id,
-            activity_type: selectedCase.assigned_action_officer_id ? 'officer_reassigned' : 'officer_assigned',
-            entity_type: 'case_assignments',
-            old_value: selectedCase.assigned_action_officer_id ? { action_officer_id: selectedCase.assigned_action_officer_id } : null,
-            new_value: { action_officer_id: selectedOfficerRecord.id, officer_name: selectedOfficerRecord.name },
-            reason: assignmentNotes.trim(),
-            source_module: 'case_assignments',
-            changed_fields: ['assigned_action_officer_id'],
-          });
+        await (supabase as any).from('case_history').insert({
+          case_id: selectedCase.id,
+          action: selectedCase.assigned_action_officer_id ? 'Case Reassigned' : 'Case Assigned',
+          description: selectedCase.assigned_action_officer_id
+            ? `Case reassigned to action officer. Reason: ${assignmentNotes.trim()}`
+            : `Case assigned to action officer. Instructions: ${assignmentNotes.trim()}`,
+          performed_by: user.id,
+          activity_type: selectedCase.assigned_action_officer_id ? 'officer_reassigned' : 'officer_assigned',
+          entity_type: 'case_assignments',
+          old_value: selectedCase.assigned_action_officer_id ? { action_officer_id: selectedCase.assigned_action_officer_id } : null,
+          new_value: { action_officer_id: selectedOfficerRecord.id, officer_name: selectedOfficerRecord.name },
+          reason: assignmentNotes.trim(),
+          source_module: 'case_assignments',
+          changed_fields: ['assigned_action_officer_id'],
+        });
       } catch (e) {
         console.log('History table not available, continuing...');
       }
@@ -449,13 +457,9 @@ export default function CaseAssignmentsPage() {
                             {caseItem.case_type.replace(/_/g, ' ')}
                           </Badge>
                         </div>
-                        <h4 className="font-medium text-slate-900 mb-1">
-                          {caseItem.title || 'Untitled Case'}
-                        </h4>
+                        <h4 className="font-medium text-slate-900 mb-1">{caseItem.title || 'Untitled Case'}</h4>
                         {caseItem.description && (
-                          <p className="text-sm text-slate-600 line-clamp-2 mb-2">
-                            {caseItem.description}
-                          </p>
+                          <p className="text-sm text-slate-600 line-clamp-2 mb-2">{caseItem.description}</p>
                         )}
                         <div className="flex items-center gap-4 text-xs text-slate-500">
                           <span className="flex items-center gap-1">
@@ -484,6 +488,7 @@ export default function CaseAssignmentsPage() {
                               setSelectedOfficer('');
                               setAssignmentNotes('');
                               setOfficerPickerOpen(false);
+                              setOfficerSearch('');
                               setOfficerDialogOpen(false);
                               setEditingOfficer(null);
                               setOfficerForm(emptyOfficerForm);
@@ -506,9 +511,7 @@ export default function CaseAssignmentsPage() {
                           <DialogContent>
                             <DialogHeader>
                               <DialogTitle>Assign Case</DialogTitle>
-                              <DialogDescription>
-                                Assign case {caseItem.case_number} to an action officer
-                              </DialogDescription>
+                              <DialogDescription>Assign case {caseItem.case_number} to an action officer</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                               <div className="p-4 bg-slate-50 rounded-lg">
@@ -530,40 +533,45 @@ export default function CaseAssignmentsPage() {
                                         ) : (
                                           <span className="text-slate-500">Search or select an officer</span>
                                         )}
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent align="start" className="w-[420px] p-0">
-                                      <Command>
-                                        <CommandInput placeholder="Search name, title, division, email..." />
-                                        <CommandList>
-                                          <CommandEmpty>No active internal officer found.</CommandEmpty>
-                                          <CommandGroup>
-                                            {officers.map((officer) => (
-                                              <CommandItem
-                                                key={officer.id}
-                                                value={officer.id}
-                                                keywords={[officer.name, officer.title || '', officer.department || officer.division || '', officer.email || '']}
-                                                onSelect={() => selectOfficer(officer)}
-                                                onMouseDown={(event) => {
-                                                  event.preventDefault();
-                                                  selectOfficer(officer);
-                                                }}
-                                                onClick={() => selectOfficer(officer)}
-                                                className="gap-2 cursor-pointer"
-                                              >
-                                                <Check className={`h-4 w-4 ${selectedOfficer === officer.id ? 'opacity-100' : 'opacity-0'}`} />
-                                                <div className="min-w-0 flex-1">
-                                                  <div className="truncate font-medium">{officer.name}</div>
-                                                  <div className="truncate text-xs text-slate-500">
-                                                    {officer.title || 'Internal Officer'} · {officer.department || officer.division || 'No division'}
-                                                  </div>
+                                      <div className="border-b p-3">
+                                        <div className="relative">
+                                          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                          <Input
+                                            value={officerSearch}
+                                            onChange={(event) => setOfficerSearch(event.target.value)}
+                                            placeholder="Search name, title, division, email..."
+                                            className="h-9 pl-8"
+                                            autoFocus
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="max-h-[320px] overflow-y-auto p-1">
+                                        {filteredOfficers.length === 0 ? (
+                                          <div className="px-3 py-6 text-center text-sm text-slate-500">
+                                            No active internal officer found.
+                                          </div>
+                                        ) : (
+                                          filteredOfficers.map((officer) => (
+                                            <button
+                                              key={officer.id}
+                                              type="button"
+                                              onClick={() => selectOfficer(officer)}
+                                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-slate-100 focus:bg-slate-100 focus:outline-none"
+                                            >
+                                              <Check className={`h-4 w-4 ${selectedOfficer === officer.id ? 'opacity-100' : 'opacity-0'}`} />
+                                              <div className="min-w-0 flex-1">
+                                                <div className="truncate font-medium text-slate-900">{officer.name}</div>
+                                                <div className="truncate text-xs text-slate-500">
+                                                  {officer.title || 'Internal Officer'} · {officer.department || officer.division || 'No division'}
                                                 </div>
-                                              </CommandItem>
-                                            ))}
-                                          </CommandGroup>
-                                        </CommandList>
-                                      </Command>
+                                              </div>
+                                            </button>
+                                          ))
+                                        )}
+                                      </div>
                                     </PopoverContent>
                                   </Popover>
                                   {selectedOfficerRecord && (
@@ -705,8 +713,13 @@ export default function CaseAssignmentsPage() {
             </div>
             <div className="space-y-2">
               <Label>Employment / account status</Label>
-              <Select value={officerForm.employment_status} onValueChange={(value) => setOfficerForm({ ...officerForm, employment_status: value })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={officerForm.employment_status}
+                onValueChange={(value) => setOfficerForm({ ...officerForm, employment_status: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
