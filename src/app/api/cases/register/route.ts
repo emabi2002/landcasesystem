@@ -67,6 +67,9 @@ export async function POST(request: NextRequest) {
       case_origin: pickString(formData.mode_of_proceeding),
       dlpp_role: pickString(formData.dlpp_role),
       division_responsible: pickString(formData.division_responsible),
+      zoning_type_id: pickString(formData.zoning_type_id),
+      dlpp_action_officer_id: pickString(formData.dlpp_action_officer_id),
+      assigned_action_officer_id: pickString(formData.dlpp_action_officer_id),
       first_hearing_date: pickString(formData.returnable_date),
       returnable_date: pickString(formData.returnable_date),
       created_by: user.id,
@@ -152,6 +155,7 @@ export async function POST(request: NextRequest) {
             notes:
               `Land Description: ${formData.land_description}\n` +
               `Zoning: ${formData.zoning || 'N/A'}\n` +
+              `Zoning Type ID: ${formData.zoning_type_id || 'N/A'}\n` +
               `Survey Plan: ${formData.survey_plan_no || 'N/A'}\n` +
               `Lease Type: ${formData.lease_type || 'N/A'}\n` +
               `Lease Period: ${formData.lease_commencement_date || 'N/A'} to ${
@@ -218,6 +222,24 @@ export async function POST(request: NextRequest) {
 
       if (taskError) console.error('Warning: Could not insert task');
       else console.info('Task added for officer');
+
+      if (formData.dlpp_action_officer_id) {
+        try {
+          await admin.from('case_assignments' as never).insert({
+            case_id: caseId,
+            action_officer_id: formData.dlpp_action_officer_id,
+            assigned_by_user_id: user.id,
+            assignment_type: 'initial_assignment',
+            assignment_reason: formData.assignment_footnote || 'Assigned during case registration',
+            is_current: true,
+            remarks: formData.assignment_footnote || null,
+            created_by: user.id,
+            updated_by: user.id,
+          } as never);
+        } catch {
+          console.error('Warning: Could not insert initial case assignment');
+        }
+      }
     }
 
     // STEP 7: Insert document placeholder with ALL form data that couldn't be saved to cases table
@@ -294,6 +316,8 @@ export async function POST(request: NextRequest) {
               court_reference: formData.court_file_number,
               dlpp_role: formData.dlpp_role,
               matter_type: formData.matter_type,
+              zoning_type_id: formData.zoning_type_id,
+              dlpp_action_officer_id: formData.dlpp_action_officer_id,
               mode_of_proceeding: formData.mode_of_proceeding,
               registration_method: 'web_form',
             },
