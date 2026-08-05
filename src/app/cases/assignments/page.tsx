@@ -82,7 +82,7 @@ export default function CaseAssignmentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedCase, setSelectedCase] = useState<PendingCase | null>(null);
-  const [selectedOfficer, setSelectedOfficer] = useState<string>('');
+  const [selectedOfficerIds, setSelectedOfficerIds] = useState<string[]>([]);
   const [assignmentNotes, setAssignmentNotes] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -132,7 +132,10 @@ export default function CaseAssignmentsPage() {
     toast.success('Data refreshed');
   };
 
-  const selectedOfficerRecord = officers.find((officer) => officer.id === selectedOfficer) || null;
+  const selectedOfficerRecords = selectedOfficerIds
+    .map((id) => officers.find((officer) => officer.id === id))
+    .filter((officer): officer is Officer => Boolean(officer));
+  const primarySelectedOfficer = selectedOfficerRecords[0] || null;
 
   const filteredOfficers = officers.filter((officer) => {
     const q = officerSearch.trim().toLowerCase();
@@ -189,7 +192,7 @@ export default function CaseAssignmentsPage() {
         const withoutSaved = previous.filter((officer) => officer.id !== savedOfficer.id);
         return [...withoutSaved, savedOfficer].sort((a, b) => a.name.localeCompare(b.name));
       });
-      setSelectedOfficer(savedOfficer.id);
+      setSelectedOfficerIds((previous) => [...new Set([...previous, savedOfficer.id])]);
       setOfficerDialogOpen(false);
       setEditingOfficer(null);
       setOfficerForm(emptyOfficerForm);
@@ -202,14 +205,19 @@ export default function CaseAssignmentsPage() {
   };
 
   const selectOfficer = (officer: Officer) => {
-    setSelectedOfficer(officer.id);
+    setSelectedOfficerIds((previous) =>
+      previous.includes(officer.id) ? previous.filter((id) => id !== officer.id) : [...previous, officer.id]
+    );
     setOfficerSearch('');
-    setOfficerPickerOpen(false);
+  };
+
+  const removeSelectedOfficer = (officerId: string) => {
+    setSelectedOfficerIds((previous) => previous.filter((id) => id !== officerId));
   };
 
   const handleAssignCase = async () => {
-    if (!selectedCase || !selectedOfficer) {
-      toast.error('Please select an officer to assign');
+    if (!selectedCase || selectedOfficerIds.length === 0) {
+      toast.error('Please select at least one officer to assign');
       return;
     }
 
@@ -225,14 +233,17 @@ export default function CaseAssignmentsPage() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const selectedOfficerRecord = officers.find((officer) => officer.id === selectedOfficer);
-      if (!selectedOfficerRecord) throw new Error('Selected officer could not be found');
+      const selectedOfficers = selectedOfficerIds
+        .map((id) => officers.find((officer) => officer.id === id))
+        .filter((officer): officer is Officer => Boolean(officer));
+      if (selectedOfficers.length === 0) throw new Error('Selected officers could not be found');
+      const primaryOfficer = selectedOfficers[0];
 
       const { error: updateError } = await (supabase as any)
         .from('cases')
         .update({
-          assigned_officer_id: selectedOfficerRecord.profile_id || null,
-          assigned_action_officer_id: selectedOfficerRecord.id,
+          assigned_officer_id: primaryOfficer.profile_id || null,
+          assigned_action_officer_id: primaryOfficer.id,
           status: 'assigned',
           updated_at: new Date().toISOString(),
           updated_by: user.id,
@@ -243,34 +254,21 @@ export default function CaseAssignmentsPage() {
       if (updateError) throw updateError;
 
       try {
-        await (supabase as any)
-          .from('case_assignments')
-          .update({
-            status: 'completed',
-            is_current: false,
-            ended_at: new Date().toISOString(),
-            updated_by: user.id,
-          })
-          .eq('case_id', selectedCase.id)
-          .eq('is_current', true);
-      } catch (e) {
-        console.log('Existing assignment update unavailable, continuing...');
-      }
-
-      try {
-        await (supabase as any).from('case_assignments').insert({
+        const assignmentRows = selectedOfficers.map((officer) => ({
           case_id: selectedCase.id,
-          assigned_officer_id: selectedOfficerRecord.profile_id || null,
-          action_officer_id: selectedOfficerRecord.id,
+          assigned_officer_id: officer.profile_id || null,
+          action_officer_id: officer.id,
           assigned_by_user_id: user.id,
           previous_officer_id: selectedCase.assigned_officer_id,
-          assignment_type: selectedCase.assigned_action_officer_id ? 'reassignment' : 'initial_assignment',
+          assignment_type: selectedCase.assigned_action_officer_id ? 'additional_assignment' : 'initial_assignment',
           assignment_reason: assignmentNotes.trim(),
           is_current: true,
           remarks: assignmentNotes.trim(),
           created_by: user.id,
           updated_by: user.id,
-        });
+        }));
+
+        await (supabase as any).from('case_assignments').insert(assignmentRows);
       } catch (e) {
         console.log('Assignment table not available, continuing...');
       }
@@ -278,35 +276,38 @@ export default function CaseAssignmentsPage() {
       try {
         await (supabase as any).from('case_history').insert({
           case_id: selectedCase.id,
-          action: selectedCase.assigned_action_officer_id ? 'Case Reassigned' : 'Case Assigned',
+          action: selectedCase.assigned_action_officer_id ? 'Case Officers Added' : 'Case Assigned',
           description: selectedCase.assigned_action_officer_id
-            ? `Case reassigned to action officer. Reason: ${assignmentNotes.trim()}`
-            : `Case assigned to action officer. Instructions: ${assignmentNotes.trim()}`,
+            ? `Additional case officers assigned. Reason: ${assignmentNotes.trim()}`
+            : `Case assigned to ${selectedOfficers.length} officer(s). Instructions: ${assignmentNotes.trim()}`,
           performed_by: user.id,
-          activity_type: selectedCase.assigned_action_officer_id ? 'officer_reassigned' : 'officer_assigned',
+          activity_type: selectedCase.assigned_action_officer_id ? 'officers_added' : 'officers_assigned',
           entity_type: 'case_assignments',
           old_value: selectedCase.assigned_action_officer_id ? { action_officer_id: selectedCase.assigned_action_officer_id } : null,
-          new_value: { action_officer_id: selectedOfficerRecord.id, officer_name: selectedOfficerRecord.name },
+          new_value: {
+            action_officer_ids: selectedOfficers.map((officer) => officer.id),
+            officer_names: selectedOfficers.map((officer) => officer.name),
+          },
           reason: assignmentNotes.trim(),
           source_module: 'case_assignments',
-          changed_fields: ['assigned_action_officer_id'],
+          changed_fields: ['assigned_action_officer_id', 'case_assignments'],
         });
       } catch (e) {
         console.log('History table not available, continuing...');
       }
 
       await logAudit('update', 'cases', selectedCase.id, 'case_assignments', {
-        action: selectedCase.assigned_action_officer_id ? 'reassignment' : 'assignment',
+        action: selectedCase.assigned_action_officer_id ? 'additional_assignment' : 'assignment',
         previous_action_officer_id: selectedCase.assigned_action_officer_id,
-        new_action_officer_id: selectedOfficerRecord.id,
-        new_officer_name: selectedOfficerRecord.name,
+        new_action_officer_ids: selectedOfficers.map((officer) => officer.id),
+        new_officer_names: selectedOfficers.map((officer) => officer.name),
         reason: assignmentNotes.trim(),
       });
 
       toast.success('Case assigned successfully!');
       setDialogOpen(false);
       setSelectedCase(null);
-      setSelectedOfficer('');
+      setSelectedOfficerIds([]);
       setAssignmentNotes('');
       loadData();
     } catch (error) {
@@ -485,7 +486,7 @@ export default function CaseAssignmentsPage() {
                             setDialogOpen(open);
                             if (!open) {
                               setSelectedCase(null);
-                              setSelectedOfficer('');
+                              setSelectedOfficerIds([]);
                               setAssignmentNotes('');
                               setOfficerPickerOpen(false);
                               setOfficerSearch('');
@@ -511,7 +512,7 @@ export default function CaseAssignmentsPage() {
                           <DialogContent>
                             <DialogHeader>
                               <DialogTitle>Assign Case</DialogTitle>
-                              <DialogDescription>Assign case {caseItem.case_number} to an action officer</DialogDescription>
+                              <DialogDescription>Assign case {caseItem.case_number} to one or more action officers</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                               <div className="p-4 bg-slate-50 rounded-lg">
@@ -526,12 +527,14 @@ export default function CaseAssignmentsPage() {
                                   <Popover open={officerPickerOpen} onOpenChange={setOfficerPickerOpen}>
                                     <PopoverTrigger asChild>
                                       <Button variant="outline" role="combobox" className="h-9 flex-1 justify-between font-normal">
-                                        {selectedOfficerRecord ? (
+                                        {selectedOfficerRecords.length > 0 ? (
                                           <span className="truncate text-left">
-                                            {selectedOfficerRecord.name} – {selectedOfficerRecord.title || 'Internal Officer'}
+                                            {selectedOfficerRecords.length === 1
+                                              ? `${selectedOfficerRecords[0].name} – ${selectedOfficerRecords[0].title || 'Internal Officer'}`
+                                              : `${selectedOfficerRecords.length} officers selected`}
                                           </span>
                                         ) : (
-                                          <span className="text-slate-500">Search or select an officer</span>
+                                          <span className="text-slate-500">Search or select officers</span>
                                         )}
                                       </Button>
                                     </PopoverTrigger>
@@ -561,7 +564,7 @@ export default function CaseAssignmentsPage() {
                                               onClick={() => selectOfficer(officer)}
                                               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-slate-100 focus:bg-slate-100 focus:outline-none"
                                             >
-                                              <Check className={`h-4 w-4 ${selectedOfficer === officer.id ? 'opacity-100' : 'opacity-0'}`} />
+                                              <Check className={`h-4 w-4 ${selectedOfficerIds.includes(officer.id) ? 'opacity-100' : 'opacity-0'}`} />
                                               <div className="min-w-0 flex-1">
                                                 <div className="truncate font-medium text-slate-900">{officer.name}</div>
                                                 <div className="truncate text-xs text-slate-500">
@@ -574,14 +577,30 @@ export default function CaseAssignmentsPage() {
                                       </div>
                                     </PopoverContent>
                                   </Popover>
-                                  {selectedOfficerRecord && (
+                                  {selectedOfficerRecords.length > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                      {selectedOfficerRecords.map((officer) => (
+                                        <Badge key={officer.id} variant="secondary" className="gap-1 px-2 py-1">
+                                          {officer.name}
+                                          <button
+                                            type="button"
+                                            className="ml-1 text-slate-500 hover:text-slate-900"
+                                            onClick={() => removeSelectedOfficer(officer.id)}
+                                          >
+                                            ×
+                                          </button>
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {primarySelectedOfficer && (
                                     <Button
                                       type="button"
                                       variant="outline"
                                       size="icon"
                                       className="h-9 w-9"
-                                      onClick={() => openOfficerForm(selectedOfficerRecord)}
-                                      title="Edit selected officer"
+                                      onClick={() => openOfficerForm(primarySelectedOfficer)}
+                                      title="Edit first selected officer"
                                     >
                                       <Pencil className="h-4 w-4" />
                                     </Button>
@@ -616,7 +635,7 @@ export default function CaseAssignmentsPage() {
                               </Button>
                               <Button
                                 onClick={handleAssignCase}
-                                disabled={!selectedOfficer || isAssigning}
+                                disabled={selectedOfficerIds.length === 0 || isAssigning}
                                 className="bg-emerald-600 hover:bg-emerald-700"
                               >
                                 {isAssigning ? (
@@ -627,7 +646,7 @@ export default function CaseAssignmentsPage() {
                                 ) : (
                                   <>
                                     <ArrowRight className="h-4 w-4 mr-2" />
-                                    Assign Case
+                                    Assign {selectedOfficerIds.length > 1 ? `${selectedOfficerIds.length} Officers` : 'Case'}
                                   </>
                                 )}
                               </Button>
@@ -646,7 +665,7 @@ export default function CaseAssignmentsPage() {
                 <span>
                   Showing {filteredCases.length} of {pendingCases.length} pending cases
                 </span>
-                <span>Click Assign to allocate to an officer</span>
+                <span>Click Assign to allocate to officers</span>
               </div>
             )}
           </div>
